@@ -1,0 +1,24 @@
+---
+description: Manter docs/DOCUMENTACAO_ATUAL.md do app alinhada ao código e mover itens concluídos para fora das pendências
+alwaysApply: true
+---
+
+# Documentação do app do participante
+
+A fonte de verdade do **app como está hoje** é `docs/DOCUMENTACAO_ATUAL.md` (deste repositório).
+O contrato consumido da API Figital fica em `docs/CONTRATO_API_FIGITAL.md`.
+As regras de negócio e o plano de fases são **referência** e vivem em `docs/referencia-mapa/` (cópia do repositório do mapa; não editar aqui — a fonte é o `Territorio-map`).
+
+## Quando atualizar
+
+Na mesma entrega em que o código do app mudar:
+
+1. Atualize `docs/DOCUMENTACAO_ATUAL.md` (o que o participante passa a poder fazer, telas, stack, limites, qual fase foi entregue).
+2. Se a mudança alterar o contrato consumido, atualize `docs/CONTRATO_API_FIGITAL.md`.
+3. Não descreva como pronto o que ainda é stub/placeholder (ex.: telas de missão da Fase 3).
+
+## O que não fazer
+
+- Não tratar as regras de negócio (`docs/referencia-mapa/CAMPANHA_FIGITAL.md`) como estado atual do app.
+- Não editar `docs/referencia-mapa/` para "consertar" o produto — essa pasta é espelho do mapa; mudanças de regra voltam ao `Territorio-map`.
+- Não inventar na documentação atual recursos que só existem no plano.

@@ -1,0 +1,66 @@
+/* Design tokens do Território — copiados 1:1 do mapa
+   (Territorio-map/poc/client/src/style.css :root). Cada entidade tem sua cor. */
+
+:root {
+  /* Superfícies e texto */
+  --color-bg-canvas: #f7f8f6;
+  --color-bg-surface: #ffffff;
+  --color-text-primary: #0b0f0a;
+  --color-text-secondary: #485044;
+  --color-text-muted: #646d61;
+  --color-text-inverse: #ffffff;
+
+  /* Bordas */
+  --color-border-subtle: #edf0eb;
+  --color-border-default: #dde2da;
+
+  /* Ação / feedback */
+  --color-action-accent-bg: #1f7a4c;
+  --color-feedback-success-fg: #19653e;
+  --color-feedback-success-bg: #dcf0e4;
+  --color-feedback-success-solid: #2e9e5b;
+  --color-feedback-error-solid: #b3241b;
+
+  /* Cor por entidade */
+  --color-missao: #1f7a4c;
+  --color-mutirao: #d4832a; /* streak/flame */
+  --color-memoria: #7c4dff;
+  --color-memoria-soft: #f5f3ff;
+  --color-memoria-fg: #8b5cf6;
+  --color-area: #00bcd4;
+  --color-totem: #b8860b;
+  --color-totem-soft: #fbf3df;
+  --color-game-xp: #d4832a;
+
+  /* Aliases semânticos */
+  --primary: var(--color-action-accent-bg);
+  --primary-hover: var(--color-feedback-success-fg);
+  --primary-light: var(--color-feedback-success-bg);
+  --primary-border: var(--color-feedback-success-solid);
+
+  /* Tipografia */
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Ritmo 4/8px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Raios e sombras */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(11, 15, 10, 0.04), 0 4px 16px rgba(11, 15, 10, 0.06);
+  --shadow-sheet: 0 -8px 40px rgba(11, 15, 10, 0.18);
+  --shadow-fab: 0 6px 20px rgba(31, 122, 76, 0.35);
+
+  /* Alvo de toque mínimo */
+  --touch: 44px;
+
+  color-scheme: light;
+}
