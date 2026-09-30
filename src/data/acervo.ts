@@ -4,9 +4,9 @@ import type { Trilha, Missao, Totem, Memoria, Insignia } from '../types';
 // Serra do Vulcão). O estado inicial já traz coisas conquistadas (para o acervo
 // não nascer vazio) e coisas por fazer (para a demo dos fluxos).
 
-// Uma única personagem guia todos os pontos no protótipo: Tainá, Guardiã do
-// Território (ver docs/NPC_TAINA.md). O nome vem do roteiro, como no mapa.
-const NPC_NOME = 'Tainá';
+// Voz que narra os pontos no protótipo (sem figura humana — decisão do CEO).
+// É só um rótulo do roteiro (§14.2), não uma personagem ilustrada.
+const NPC_NOME = 'Guia do Território';
 
 export const TRILHAS: Trilha[] = [
   { id: 'serra-do-vulcao', nome: 'Trilha da Serra do Vulcão', local: 'Duque de Caxias · RJ' },
@@ -32,7 +32,7 @@ export const MISSOES_INICIAIS: Missao[] = [
     npc: {
       nome: NPC_NOME,
       falas: [
-        { id: 'intro', texto: 'Oi! Eu sou a Tainá, guardiã do território. Que bom te ver aqui na nascente do Sarapuí!' },
+        { id: 'intro', texto: 'Que bom te ver aqui na nascente do Sarapuí! Vamos cuidar deste lugar juntos?' },
         { id: 'missao', texto: 'É daqui que nasce o rio que corta a nossa cidade. A missão de hoje é limpar as margens dela.' },
         { id: 'dica', texto: 'Tira uma foto do antes e outra do depois. É assim que a gente mostra a nascente se recuperando.' },
         { id: 'ok', texto: 'Isso! A nascente respira melhor graças a você. Suas fotos já estão no mapa.' }

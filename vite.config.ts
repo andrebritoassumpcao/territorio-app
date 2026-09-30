@@ -1,10 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url';
 
-// Visualização mobile do Território ("Minha jornada") — 100% mockada, sem backend.
-// Sem PWA: é uma página web servida pelo Vercel; o QR lido pela câmera nativa do
-// celular abre /m/{mapa}/missao/{id} e o roteador do cliente (src/ui/rota.tsx) resolve.
+// Site único "Território": duas páginas no mesmo build/domínio.
+//   index.html  → SPA do participante (Minha jornada, deep links /m/..., /qrs)
+//   mapa.html   → mapa colaborativo (autoria de missão + geração de QR), vanilla + Leaflet
+// O QR gerado no mapa aponta para o domínio atual e o app resolve /m/{mapa}/missao/{id}.
 export default defineConfig({
   server: { port: 5174 },
-  plugins: [react()]
+  plugins: [react()],
+  build: {
+    rollupOptions: {
+      input: {
+        app: fileURLToPath(new URL('./index.html', import.meta.url)),
+        mapa: fileURLToPath(new URL('./mapa.html', import.meta.url))
+      }
+    }
+  }
 });

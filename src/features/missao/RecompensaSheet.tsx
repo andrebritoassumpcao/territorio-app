@@ -1,7 +1,6 @@
 import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useAcervo } from '../../store/useAcervo';
-import Taina from '../npc/Taina';
 
 interface Props {
   missaoId: string;
@@ -13,8 +12,8 @@ interface Props {
 }
 
 // Revelação da recompensa após enviar a missão. A insígnia e o XP já foram
-// gravados pelo store; aqui é só a celebração — com a Tainá dizendo a fala `ok`
-// do roteiro (§14.2), quando a missão tem NPC.
+// gravados pelo store; aqui é só a celebração — com a fala `ok` do roteiro
+// (§14.2) exibida como texto, quando a missão tem NPC (sem figura humana).
 export default function RecompensaSheet({ missaoId, recompensa, xp, onFechar, onDeixarMemoria }: Props) {
   const { missoes } = useAcervo();
   const npc = missoes.find((m) => m.id === missaoId)?.npc;
@@ -32,9 +31,6 @@ export default function RecompensaSheet({ missaoId, recompensa, xp, onFechar, on
 
         {npc && falaOk ? (
           <div className="recompensa__npc">
-            <span className="recompensa__npc-avatar" aria-hidden="true">
-              <Taina expressao="comemorando" />
-            </span>
             <p className="recompensa__npc-balao">
               <strong>{npc.nome}</strong>
               {falaOk.texto}

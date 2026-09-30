@@ -1,3 +1,5 @@
+> ⚠️ **DESCONTINUADO (30/09/2026).** Por decisão do CEO, o produto **não terá figuras humanas**. A personagem Tainá foi **removida** do app (componente `Taina.tsx` excluído; a cena de fala ficou só com paisagem + diálogo). Este documento fica como **referência histórica** — não guia o estado atual. Ver `docs/MIGRACAO_MAPA.md` e `docs/DOCUMENTACAO_ATUAL.md`.
+
 # Tainá, Guardiã do Território — ficha da personagem e prompt kit
 
 NPC única do protótipo: explica cada missão e cada totem em uma **cena de diálogo por etapas** (roteiro fixo, RN-FIG-047; formato de falas do §14.2). Este documento descreve a personagem, a arte vetorial que está no app e como gerar uma versão ilustrada mais rica numa IA de imagem para substituir.

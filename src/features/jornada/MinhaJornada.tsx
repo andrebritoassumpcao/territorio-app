@@ -2,7 +2,6 @@ import { useAcervo } from '../../store/useAcervo';
 import { useFluxo } from '../../ui/fluxo';
 import Icone from '../../ui/Icone';
 import { STATS_JORNADA } from '../../data/perfil';
-import Taina from '../npc/Taina';
 import PerfilHeader from './PerfilHeader';
 import { CATEGORIA_ICONE, CATEGORIA_ROTULO, PAPEL_ROTULO } from './rotulos';
 
@@ -42,10 +41,10 @@ export default function MinhaJornada() {
       {/* Entrada real é a câmera nativa (deep link); "Simular leitura" é o plano B da demo. */}
       <div className="dica-scan">
         <span className="dica-scan__avatar" aria-hidden="true">
-          <Taina expressao="acenando" enquadramento="rosto" />
+          <Icone nome="qr-code" tamanho={28} />
         </span>
         <p className="dica-scan__texto">
-          <strong>Tainá:</strong> Achou um QR de missão ou totem? Aponte a câmera do celular que eu te explico tudo!
+          Achou um QR de missão ou totem? Aponte a câmera do celular para começar a jornada.
         </p>
         <button type="button" className="botao-texto" onClick={fluxo.abrirScan}>
           Simular leitura

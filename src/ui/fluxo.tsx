@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { QrMock, VinculoMemoria } from '../types';
 import { useAcervo } from '../store/useAcervo';
+import { buscarMissao } from '../data/missoesRemotas';
 import { useAviso } from './aviso';
 import { CAMINHO_JORNADA, useRota } from './rota';
 import ScanSheet from '../features/scan/ScanSheet';
@@ -43,8 +44,10 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
     setRegistros({});
   };
   const { rota, navegar } = useRota();
-  const { missoes, totens, npcVistos, marcarNpcVisto } = useAcervo();
+  const { missoes, totens, npcVistos, marcarNpcVisto, adicionarMissao } = useAcervo();
   const avisar = useAviso();
+  // Missão buscada no Supabase (autorada no mapa) esperando entrar no store para abrir.
+  const [missaoPendente, setMissaoPendente] = useState<string | null>(null);
 
   function falasDaCena(alvo: Alvo, id: string) {
     const npc = alvo === 'missao' ? missoes.find((m) => m.id === id)?.npc : totens.find((t) => t.id === id)?.roteiroNpc;
@@ -70,10 +73,24 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
   // Deep link (QR lido pela câmera nativa): /m/{mapa}/missao/{id} ou /m/{mapa}/t/{id}
   // abre a cena do NPC (e depois o sheet) sobre Minha jornada. A URL volta para
   // /jornada na hora, para que fechar/recarregar não reabra. ID desconhecido → aviso.
+  // Missão não encontrada no store local é buscada no Supabase (autorada no mapa,
+  // handoff por QR): ao chegar, entra no acervo e abre pelo efeito de `missaoPendente`.
   useEffect(() => {
     if (rota.tipo === 'missao') {
-      if (missoes.some((m) => m.id === rota.id)) abrir('missao', rota.id, 'qr');
-      else avisar('Missão não encontrada neste protótipo.');
+      const id = rota.id;
+      if (missoes.some((m) => m.id === id)) {
+        abrir('missao', id, 'qr');
+      } else {
+        avisar('Carregando missão…');
+        buscarMissao(id).then((m) => {
+          if (m) {
+            adicionarMissao(m);
+            setMissaoPendente(m.id);
+          } else {
+            avisar('Missão não encontrada neste protótipo.');
+          }
+        });
+      }
       navegar(CAMINHO_JORNADA, { substituir: true });
     } else if (rota.tipo === 'totem') {
       if (totens.some((t) => t.id === rota.id)) abrir('totem', rota.id, 'qr');
@@ -82,6 +99,14 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
     }
     // Reage só à mudança de rota; o estado do acervo é lido no momento do deep link.
   }, [rota]);
+
+  // Quando a missão buscada no Supabase entra no acervo, abre o fluxo (cena → sheet).
+  useEffect(() => {
+    if (missaoPendente && missoes.some((m) => m.id === missaoPendente)) {
+      abrir('missao', missaoPendente, 'qr');
+      setMissaoPendente(null);
+    }
+  }, [missaoPendente, missoes]);
 
   const fluxo: Fluxo = {
     abrirScan: () => setEstado({ tipo: 'scan' }),

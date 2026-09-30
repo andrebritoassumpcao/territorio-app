@@ -23,6 +23,8 @@ interface EstadoAcervo {
 interface Acervo extends EstadoAcervo {
   concluirMissao: (missaoId: string) => { recompensa: string; xp: number } | null;
   adicionarMemoria: (entrada: { missaoId: string | null; totemId: string | null; titulo: string; descricao: string; foto: string | null }) => void;
+  /** Injeta uma missão autorada no mapa (handoff por QR). Idempotente; cria a insígnia par. */
+  adicionarMissao: (missao: Missao) => void;
   marcarNpcVisto: (chave: string) => void;
   resetar: () => void;
 }
@@ -108,6 +110,24 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const adicionarMissao = useCallback<Acervo['adicionarMissao']>((missao) => {
+    setEstado((s) => {
+      if (s.missoes.some((m) => m.id === missao.id)) return s; // idempotente
+      const insignia: Insignia = {
+        id: `ins-${missao.id}`,
+        nome: missao.recompensa || 'Insígnia da missão',
+        conquistada: false,
+        missaoId: missao.id
+      };
+      const jaTemInsignia = s.insignias.some((i) => i.id === insignia.id);
+      return {
+        ...s,
+        missoes: [missao, ...s.missoes],
+        insignias: jaTemInsignia ? s.insignias : [...s.insignias, insignia]
+      };
+    });
+  }, []);
+
   const marcarNpcVisto = useCallback((chave: string) => {
     setEstado((s) => (s.npcVistos.includes(chave) ? s : { ...s, npcVistos: [...s.npcVistos, chave] }));
   }, []);
@@ -117,8 +137,8 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const valor = useMemo<Acervo>(
-    () => ({ ...estado, concluirMissao, adicionarMemoria, marcarNpcVisto, resetar }),
-    [estado, concluirMissao, adicionarMemoria, marcarNpcVisto, resetar]
+    () => ({ ...estado, concluirMissao, adicionarMemoria, adicionarMissao, marcarNpcVisto, resetar }),
+    [estado, concluirMissao, adicionarMemoria, adicionarMissao, marcarNpcVisto, resetar]
   );
 
   return <AcervoContext.Provider value={valor}>{children}</AcervoContext.Provider>;

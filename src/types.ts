@@ -22,8 +22,8 @@ export interface Insumo {
 
 /**
  * Uma fala do roteiro fixo do NPC (RN-FIG-047), no formato do manifesto (§14.2).
- * O `id` segue a convenção do exemplo do mapa — `intro`, `missao`, `ok` — e no
- * protótipo também escolhe a expressão da personagem (ver features/npc/Taina.tsx).
+ * O `id` segue a convenção do exemplo do mapa — `intro`, `missao`, `ok`.
+ * A cena de fala não tem figura humana (decisão do CEO): mostra só o texto.
  * A fala `ok` não entra na cena de abertura: é dita na recompensa.
  */
 export interface FalaNpc {
