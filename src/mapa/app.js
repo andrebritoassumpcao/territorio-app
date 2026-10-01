@@ -621,10 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ${avatars}
       ${vinculoShapeHtml(data.vinculo)}
       <div class="card-action-group">
-        <button class="card-btn card-btn-primary" type="button" onclick="showToast('Abrindo detalhes da missão...')">${detailsLabel}</button>
-        <button class="card-btn card-btn-outline-amber" type="button" data-requires-auth onclick="openCreateMutiraoForMissao('${escapeJsString(data.titulo)}')">
-          Criar mutirão para esta missão
-        </button>
+        <button class="card-btn card-btn-primary" type="button" onclick="verMissaoNoApp('${escapeJsString(data.id)}')">${detailsLabel}</button>
         <button class="card-btn card-btn-outline" type="button" onclick="gerarQrMissao('${escapeJsString(data.id)}')">
           Gerar arte de QR
         </button>
@@ -2408,6 +2405,8 @@ document.addEventListener('DOMContentLoaded', () => {
           refreshPinAppearance(editing);
           refreshPinPopup(editing);
           showToast(`Missão "${titleInput}" atualizada.`);
+          // Handoff: reflete a edição no app (não depende de "Gerar QR").
+          upsertMissaoParaApp(editing.data, cenarioInput).then((r) => { if (!r.ok) showToast(r.message); });
         } else {
           const newData = {
             id: newFeatureId('m'),
@@ -2443,6 +2442,8 @@ document.addEventListener('DOMContentLoaded', () => {
           applyFilters();
 
           showToast(`Missão "${titleInput}" criada no ponto escolhido.`);
+          // Handoff: já grava a missão para o app (o QR carrega só o ID).
+          upsertMissaoParaApp(newData, cenarioInput).then((r) => { if (!r.ok) showToast(r.message); });
         }
 
       } else if (currentActiveTab === 'mutirao') {
@@ -2945,6 +2946,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleNpc) toggleNpc.checked = temNpc;
     if (npcSection) npcSection.hidden = !temNpc;
     if (npcNome) npcNome.value = data.npc?.nome || 'Guardiã do território';
+    const cSel = document.getElementById('select-cenario-missao');
+    if (cSel) cSel.value = data.cenario || 'horta';
     missaoFalasBuilder.set(data.npc?.falas || []);
   }
 
@@ -3473,6 +3476,15 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       showToast('Não foi possível gerar o QR agora.');
     }
+  };
+
+  // "Ver missão": garante a missão no Supabase e abre a tela de missão do app (deep link).
+  window.verMissaoNoApp = async function(missaoId) {
+    const entry = parentById.get(missaoId);
+    if (entry && entry.kind === 'missao') {
+      await upsertMissaoParaApp(entry.data, entry.data.cenario);
+    }
+    window.location.href = `/m/${MAPA_ID}/missao/${missaoId}`;
   };
 
   window.gerarQrTotem = async function(totemId) {

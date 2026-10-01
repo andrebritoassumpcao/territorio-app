@@ -76,7 +76,7 @@ src/
 |---------|--------------|
 | `/` ou qualquer caminho desconhecido | Redireciona para `/jornada` |
 | `/jornada` | Página Minha jornada dentro do shell |
-| `/m/{mapaId}/missao/{missaoId}` | **Cena de fala** e depois o sheet da missão, sobre Minha jornada. Missão criada no mapa é buscada no Supabase por ID e injetada no acervo |
+| `/m/{mapaId}/missao/{missaoId}` | **Cena de fala** e depois o sheet da missão, sobre Minha jornada. Com Supabase ligado, a missão é **sempre rebuscada** por ID e injetada/atualizada no acervo (traz edições feitas no mapa, preservando o progresso local); missão-semente sem linha no Supabase abre a versão local |
 | `/m/{mapaId}/t/{totemId}` | **Cena de fala** e depois o sheet do totem, sobre Minha jornada |
 | `/qrs` | QRs de demonstração (rota "escondida") |
 | `/mapa` (`/mapa.html`) | **Mapa colaborativo** (autoria de missão + geração de QR); página vanilla + Leaflet, fora do SPA |
@@ -88,14 +88,19 @@ O padrão `/m/...` é o mesmo da URL profunda do mapa (§14.1, `gerarUrlQrMissao
 ## 5. Shell do sistema (top bar, sidebar, perfil)
 
 - **Top bar** (do mapa): botão da sidebar, busca (**Em breve**), notificações (**Em breve**), avatar que abre o menu de perfil.
-- **Sidebar** (drawer): logo + Home, Mapa, Manual, Mutirões, Comunidades, Blog — todos mostram toast "Em breve" (só Minha jornada funciona nesta visualização).
-- **Menu de perfil** (igual ao do mapa): identidade (Amanda Waller, nível, XP vivo), Minha rede (**Em breve**), Organizações (vazio, **Em breve**), bloco **Minha jornada** com os 4 stats + "Ver minha jornada", Sair (**Em breve**). Só no protótipo, um bloco **Demonstração**: "QRs de demonstração" (→ `/qrs`) e "Reiniciar demo".
+- **Sidebar** (drawer): logo + Home, Mapa, Manual, Mutirões, Comunidades, Blog. **Mapa** navega para `/mapa.html` (autoria + QR); os demais mostram toast "Em breve".
+- **Menu de perfil** (igual ao do mapa): identidade (Amanda Waller, nível, XP vivo), Minha rede (**Em breve**), Organizações (vazio, **Em breve**), bloco **Minha jornada** só com "Ver minha jornada", Sair (**Em breve**). Os 4 stats estáticos (Saberes/Certificados/Horas/Manuais) foram **removidos** daqui e da página — não faziam sentido para o participante. Só no protótipo, um bloco **Demonstração**: "QRs de demonstração" (→ `/qrs`) e "Reiniciar demo".
+
+## 5.1 Tutorial de onboarding (tour guiado com spotlight)
+
+No **primeiro acesso**, roda **uma vez** um **tour guiado** (biblioteca **driver.js**): a tela escurece e um recorte iluminado destaca cada passo, com balão que avança no **"Próximo"** (o alvo fica **não clicável** — `disableActiveInteraction` — para não disparar ações por acidente). Sequência (6 passos): **dica de scan** → **missões** → **memórias** → **abre a 1ª missão** (o próprio tour abre o sheet, sem a cena) → **Registrar** (auto-registra os obrigatórios para habilitar) → **Enviar** (destacado). Ao concluir, **fecha o sheet sem enviar** — não conclui a missão nem mexe no XP.
+
+Se o participante entra por **deep link de missão**, a **cena do NPC é adiada**: o tour roda primeiro e, ao terminar, a cena da missão real abre. Flag `tutorialVisto` no store (**"Reiniciar demo" reexibe**). Peças: `src/features/tutorial/tour.ts` (`iniciarTourGuiado`) + `src/features/tutorial/TutorialTour.tsx` (disparo, dentro do `FluxoProvider`); o `fluxo.tsx` expõe o controlador (abrir sheet direto, registrar, fim) e faz o adiamento; âncoras `data-tour="…"` em `MinhaJornada.tsx` e `MissaoSheet.tsx`.
 
 ## 6. A página Minha jornada
 
 - Título "Minha jornada".
 - **Perfil:** Amanda Waller, Bacia do Rio Sarapuí, **Nível 12**, barra de XP (2450/3000), contadores de missões e insígnias (vivos).
-- **Stats** do mapa (Saberes 12, Certificados 3, Horas 48, Manuais 48) — **estáticos**, iguais ao mapa (`STATS_JORNADA` em `src/data/perfil.ts`).
 - **Dica de scan:** ícone de QR + "Achou um QR de missão ou totem? Aponte a câmera do celular…" + link discreto **"Simular leitura"** (abre a lista de QRs mock — plano B se a câmera/rede falhar).
 - **Seções:** Missões (por fazer), Totens do território, Insígnias, Memórias, Concluídas (aparece após concluir alguma). Cada memória mostra de onde veio num chip: **Missão · …** (verde) ou **Totem · …** (dourado).
 

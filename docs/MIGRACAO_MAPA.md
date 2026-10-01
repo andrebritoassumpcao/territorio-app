@@ -12,9 +12,9 @@ Este documento registra **o que foi trazido do `Territorio-map` para dentro do `
 
 ## Fluxo integrado (handoff por QR) — missões
 
-1. No mapa, o autor (logado) cria uma **missão** e escolhe o **cenário** (rio/serra/horta).
-2. Ao **"Gerar QR"**, o mapa converte a missão para o formato `Missao` do app e grava na tabela **`missoes`** do Supabase (`src/mapa/handoff.js`). O QR aponta para o **domínio atual** (`window.location.origin`) em `/m/{mapa}/missao/{id}`.
-3. Um **segundo aparelho** lê o QR, abre o site; o app busca a missão por ID no Supabase (`src/data/missoesRemotas.ts`), injeta no acervo (`useAcervo.adicionarMissao`) e **roda o fluxo** (cena de fala → executar → enviar → recompensa/insígnia/XP).
+1. No mapa, o autor (logado) cria/edita uma **missão** e escolhe o **cenário** (rio/serra/horta).
+2. Ao **salvar** (criar ou editar) — e também ao **"Gerar QR"** — o mapa converte a missão para o formato `Missao` do app e faz **upsert** na tabela **`missoes`** do Supabase (`src/mapa/handoff.js`). Assim a **edição também propaga**, sem depender de regenerar o QR. O QR aponta para o **domínio atual** (`window.location.origin`) em `/m/{mapa}/missao/{id}`.
+3. Um **segundo aparelho** lê o QR, abre o site; o app **sempre rebusca** a missão por ID no Supabase (`src/data/missoesRemotas.ts`) — trazendo edições — e faz **update-or-insert** no acervo (`useAcervo.adicionarMissao`, preservando `status`/conclusão locais), então **roda o fluxo** (cena de fala → executar → enviar → recompensa/insígnia/XP). Escrita exige login (RLS: insert/update só autenticado); leitura é pública.
 
 ## Migrado e garantido (foco: missões)
 
@@ -22,6 +22,7 @@ Este documento registra **o que foi trazido do `Territorio-map` para dentro do `
 - Geração de QR apontando para o domínio atual.
 - Gravação da missão no Supabase (tabela `missoes`, formato `Missao`).
 - Leitura por ID no app e execução completa do fluxo de missão.
+- No card de missão do mapa, **"Ver missão"** faz upsert e abre a **tela de missão do app** (deep link `/m/{mapa}/missao/{id}`).
 
 ## Veio na tela (mapa inteiro) mas NÃO integra com o app
 

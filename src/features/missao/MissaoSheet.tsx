@@ -59,7 +59,7 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onFech
       <section className="bloco">
         <h3 className="bloco__titulo">O que coletar</h3>
         <ul className="insumos">
-          {missao.oQueColetar.map((i) => {
+          {missao.oQueColetar.map((i, idx) => {
             const feito = registrados.includes(i.id) || jaConcluida;
             return (
               <li key={i.id} className={`insumo${feito ? ' insumo--feito' : ''}`}>
@@ -70,7 +70,12 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onFech
                 {feito ? (
                   <span className="insumo__ok" aria-label="Registrado"><Icone nome="check" tamanho={18} /></span>
                 ) : (
-                  <button type="button" className="botao-secundario botao-secundario--sm" onClick={() => onRegistrar(i.id)}>
+                  <button
+                    type="button"
+                    className="botao-secundario botao-secundario--sm"
+                    data-tour={idx === 0 ? 'registrar' : undefined}
+                    onClick={() => onRegistrar(i.id)}
+                  >
                     <Icone nome="camera" tamanho={16} /> Registrar
                   </button>
                 )}
@@ -107,7 +112,7 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onFech
       {jaConcluida ? (
         <p className="aviso aviso--sucesso"><Icone nome="check" tamanho={16} /> Missão já concluída e guardada na sua jornada.</p>
       ) : (
-        <button type="button" className="botao-primario" disabled={faltaObrigatorio || enviando} onClick={enviar}>
+        <button type="button" className="botao-primario" data-tour="enviar" disabled={faltaObrigatorio || enviando} onClick={enviar}>
           {enviando ? 'Enviando…' : 'Enviar missão'}
         </button>
       )}
