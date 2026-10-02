@@ -18,12 +18,17 @@ interface EstadoAcervo {
   insignias: Insignia[];
   /** Cenas do NPC já vistas, por ponto (`missao:{id}` / `totem:{id}`). */
   npcVistos: string[];
+  /** Tutorial de onboarding já visto (mostrado uma vez no primeiro acesso). */
+  tutorialVisto: boolean;
 }
 
 interface Acervo extends EstadoAcervo {
   concluirMissao: (missaoId: string) => { recompensa: string; xp: number } | null;
   adicionarMemoria: (entrada: { missaoId: string | null; totemId: string | null; titulo: string; descricao: string; foto: string | null }) => void;
+  /** Injeta uma missão autorada no mapa (handoff por QR). Idempotente; cria a insígnia par. */
+  adicionarMissao: (missao: Missao) => void;
   marcarNpcVisto: (chave: string) => void;
+  marcarTutorialVisto: () => void;
   resetar: () => void;
 }
 
@@ -39,7 +44,8 @@ function estadoInicial(): EstadoAcervo {
     totens: TOTENS_INICIAIS.map((t) => ({ ...t })),
     memorias: MEMORIAS_INICIAIS.map((m) => ({ ...m })),
     insignias: INSIGNIAS_INICIAIS.map((i) => ({ ...i })),
-    npcVistos: []
+    npcVistos: [],
+    tutorialVisto: false
   };
 }
 
@@ -108,8 +114,34 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const adicionarMissao = useCallback<Acervo['adicionarMissao']>((missao) => {
+    setEstado((s) => {
+      const existente = s.missoes.find((m) => m.id === missao.id);
+      // Update-or-insert: ao rebuscar do mapa (edição), atualiza o conteúdo mas
+      // PRESERVA o progresso local (status/conclusão) para não zerar quem já concluiu.
+      const missoes = existente
+        ? s.missoes.map((m) =>
+            m.id === missao.id ? { ...missao, status: m.status, concluidaEm: m.concluidaEm } : m
+          )
+        : [missao, ...s.missoes];
+
+      const insigniaId = `ins-${missao.id}`;
+      const nomeInsignia = missao.recompensa || 'Insígnia da missão';
+      const temInsignia = s.insignias.some((i) => i.id === insigniaId);
+      const insignias = temInsignia
+        ? s.insignias.map((i) => (i.id === insigniaId ? { ...i, nome: nomeInsignia } : i))
+        : [...s.insignias, { id: insigniaId, nome: nomeInsignia, conquistada: false, missaoId: missao.id } as Insignia];
+
+      return { ...s, missoes, insignias };
+    });
+  }, []);
+
   const marcarNpcVisto = useCallback((chave: string) => {
     setEstado((s) => (s.npcVistos.includes(chave) ? s : { ...s, npcVistos: [...s.npcVistos, chave] }));
+  }, []);
+
+  const marcarTutorialVisto = useCallback(() => {
+    setEstado((s) => (s.tutorialVisto ? s : { ...s, tutorialVisto: true }));
   }, []);
 
   const resetar = useCallback(() => {
@@ -117,8 +149,8 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const valor = useMemo<Acervo>(
-    () => ({ ...estado, concluirMissao, adicionarMemoria, marcarNpcVisto, resetar }),
-    [estado, concluirMissao, adicionarMemoria, marcarNpcVisto, resetar]
+    () => ({ ...estado, concluirMissao, adicionarMemoria, adicionarMissao, marcarNpcVisto, marcarTutorialVisto, resetar }),
+    [estado, concluirMissao, adicionarMemoria, adicionarMissao, marcarNpcVisto, marcarTutorialVisto, resetar]
   );
 
   return <AcervoContext.Provider value={valor}>{children}</AcervoContext.Provider>;

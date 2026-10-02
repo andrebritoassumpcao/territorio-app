@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Cenario as TipoCenario, FalaNpc } from '../../types';
 import Icone from '../../ui/Icone';
 import Cenario from './Cenario';
-import Taina, { expressaoDaFala } from './Taina';
 
 interface Props {
   nome: string;
@@ -91,9 +90,6 @@ export default function CenaNpc({ nome, falas, cenario, alvo, tituloPonto, cta, 
 
   if (!fala) return null;
 
-  const expressao = expressaoDaFala(fala.id);
-  const eTaina = nome === 'Tainá';
-
   return (
     <div className="cena" role="dialog" aria-modal="true" aria-label={`Conversa com ${nome}`} tabIndex={-1} ref={raiz}>
       <div className={`cena__palco cena__palco--${alvo}`} onClick={avancar}>
@@ -117,16 +113,8 @@ export default function CenaNpc({ nome, falas, cenario, alvo, tituloPonto, cta, 
           </button>
         </header>
 
-        <div className="cena__personagem" aria-hidden="true">
-          {/* key: a troca de expressão reencena a entrada ("pulinho") */}
-          <Taina key={expressao} expressao={expressao} falando={digitando} className="cena__taina" />
-        </div>
-
         <div className="cena__caixa" key={indice}>
-          <span className="cena__nome">
-            {nome}
-            {eTaina && <small>Guardiã do Território</small>}
-          </span>
+          <span className="cena__nome">{nome}</span>
 
           <p className="cena__texto">
             {/* O texto completo reserva a altura; o digitado fica por cima. */}

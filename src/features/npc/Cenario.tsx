@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import type { Cenario as TipoCenario } from '../../types';
 
-// Paisagens ilustradas atrás da Tainá na cena de diálogo, uma por tipo de lugar:
+// Paisagens ilustradas de fundo da cena de fala, uma por tipo de lugar:
 //   rio   — nascente/rio Sarapuí (água, mata ciliar, sol)
 //   serra — Serra do Vulcão (morro cônico, trilha em zigue-zague, mata)
 //   horta — horta do bairro (casinhas coloridas no morro, canteiros)
@@ -140,7 +140,7 @@ function Horta() {
       <Sol x={316} y={140} />
       <Nuvem x={50} y={150} />
       <Passaros x={150} y={220} />
-      {/* Morro com as casas erguido para aparecer acima da cabeça da Tainá */}
+      {/* Morro com as casas erguido para aparecer no alto da cena */}
       <g transform="translate(0 -120)">
         <path d="M0 400 Q110 300 230 330 Q320 350 400 320 V920 H0 Z" fill="#89c290" />
         {CASAS.map(([x, y, w, h, cor]) => (

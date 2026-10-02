@@ -8,7 +8,9 @@ Guia para o Claude Code (claude.ai/code) neste repositório.
 
 **Estado atual: protótipo de apresentação** — não é mais um "app" (PWA): é uma **visualização mobile do sistema Território** (top bar, sidebar e menu de perfil do mapa) com a página **"Minha jornada"** do perfil, onde vivem as missões. **100% mockado (sem backend)**, em **TypeScript**, publicado no **Vercel**. O QR da missão, lido pela **câmera nativa do celular**, abre `/m/{mapa}/missao/{id}` e a página abre a missão (deep link). Ver `docs/DOCUMENTACAO_ATUAL.md`.
 
-> A integração real com a API Figital (manifesto/offline, envio ao painel, assinatura — Fases 2–5 do plano) segue **suspensa**. O contrato fica preservado em `docs/CONTRATO_API_FIGITAL.md` e o plano em `docs/referencia-mapa/` para retomar depois. As URLs dos QRs já seguem o padrão do mapa (§14.1).
+> **Atualização (30/09/2026 — unificação):** o mapa (`Territorio-map`) foi trazido para **dentro** deste repo como **segunda página** (`mapa.html`, vanilla + Leaflet), formando um **site único**. Missões criadas no mapa chegam ao app por **QR + tabela `missoes` no Supabase** (deixou de ser 100% mockado; o resto do acervo segue em `localStorage`). Sem figuras humanas (decisão do CEO): a personagem Tainá foi removida. Detalhes em `docs/MIGRACAO_MAPA.md` e `docs/DOCUMENTACAO_ATUAL.md`.
+
+> As demais Fases da API Figital (manifesto/offline, envio ao painel, assinatura — Fases 2–5) seguem **suspensas**. O contrato fica preservado em `docs/CONTRATO_API_FIGITAL.md` e o plano em `docs/referencia-mapa/` para retomar depois. As URLs dos QRs já seguem o padrão do mapa (§14.1).
 
 ## Fonte de verdade
 

@@ -1,0 +1,1470 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Território — Mapa Colaborativo de Soluções Climáticas</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <!-- Estilos Principais -->
+    <link rel="stylesheet" href="/src/mapa/style.css" />
+  </head>
+  <body>
+    <!-- =========================================================================
+       0. MODAL DE LOGIN (Supabase Auth — usuário único de demonstração)
+       O mapa é visível sem login; o modal abre pelo botão "Entrar" do topo ou
+       ao tentar editar algo (elementos com data-requires-auth). Ver app.js.
+       ========================================================================= -->
+    <div class="login-screen hidden" id="login-screen" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <div class="modal-card login-card">
+        <button type="button" class="btn-close-panel login-close" id="btn-login-close" aria-label="Fechar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        <form id="login-form" class="login-form" novalidate>
+          <div class="login-brand">
+            <img src="/mapa/logo.png" class="login-logo" alt="Território" />
+          </div>
+          <div class="login-heading">
+            <h1 class="modal-title" id="login-title">Entrar no Território</h1>
+            <p class="form-helper-text" id="login-subtitle">Entre para criar e editar no mapa colaborativo.</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-email">E-mail</label>
+            <input
+              class="form-input"
+              id="login-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              placeholder="voce@exemplo.org"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Senha</label>
+            <input
+              class="form-input"
+              id="login-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <p class="form-error login-error" id="login-error" role="alert" hidden></p>
+          <button type="submit" class="card-btn card-btn-primary login-submit" id="login-submit">
+            Entrar
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div id="app-container">
+      <!-- =========================================================================
+         1. SIDEBAR LATERAL ESQUERDA
+         ========================================================================= -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+          <!-- Logo Header -->
+          <div class="sidebar-header">
+            <a href="#" class="brand-logo">
+              <div class="logo-icon">T</div>
+              <img src="/mapa/logo.png" class="brand-logo-img" alt="Território" />
+            </a>
+            <button
+              class="btn-sidebar-toggle"
+              id="btn-sidebar-toggle"
+              title="Recolher menu"
+            >
+            <span class="ds-icon ds-icon-20">
+              <img src="/mapa/icons/panel-left.svg" alt="" width="20" height="20" />
+            </span>
+            </button>
+          </div>
+
+          <!-- Menu de Navegação principais -->
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="/jornada" title="Ir para Minha jornada">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                  <path
+                    d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+                  ></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Home</span>
+              </a>
+            </li>
+            <li class="nav-item active">
+              <a href="#">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                  <polygon
+                    points="1 6 1 22 8 18 15 22 22 18 22 2 15 6 8 2 1 6"
+                  ></polygon>
+                  <line x1="8" y1="2" x2="8" y2="18"></line>
+                  <line x1="15" y1="6" x2="15" y2="22"></line>
+                </svg>
+                <span>Mapa</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path
+                    d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+                  ></path>
+                </svg>
+                <span>Manual</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span>Mutirões</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Comunidades</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#">
+                <svg class="nav-icon" viewBox="0 0 24 24">
+                  <path
+                    d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                  ></path>
+                  <path
+                    d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                  ></path>
+                </svg>
+                <span>Blog</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- =========================================================================
+         2. ÁREA PRINCIPAL (BARRA SUPERIOR + MAPA INTERATIVO)
+         ========================================================================= -->
+      <main class="main-content">
+        <!-- Barra de Busca Superior -->
+        <header class="top-bar">
+          <button
+            class="btn-icon"
+            id="btn-topbar-sidebar-toggle"
+            title="Alternar sidebar"
+          >
+            <span class="ds-icon ds-icon-20">
+              <img src="/mapa/icons/panel-left.svg" alt="" width="20" height="20" />
+            </span>
+          </button>
+
+          <div class="search-container">
+            <span class="search-icon">
+              <img src="/mapa/icons/search.svg" alt="" width="18" height="18" />
+            </span>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Buscar lugares, iniciativas ou pessoas..."
+              readonly
+              aria-label="Buscar (em breve)"
+              title="Busca ainda não disponível nesta versão"
+            />
+            <span class="soon-pill" aria-hidden="true">Em breve</span>
+          </div>
+
+          <div class="top-bar-end">
+            <button
+              class="btn-icon notification-btn is-soon"
+              type="button"
+              aria-disabled="true"
+              aria-label="Notificações (em breve)"
+              title="Notificações ainda não disponíveis nesta versão"
+            >
+              <span class="ds-icon ds-icon-20">
+                <img src="/mapa/icons/bell.svg" alt="" width="20" height="20" />
+              </span>
+              <span class="notification-badge"></span>
+            </button>
+
+            <div class="profile-cluster">
+              <!-- Deslogado: botão Entrar. Logado: perfil (app.js alterna os dois). -->
+              <button type="button" class="card-btn card-btn-primary btn-login-header" id="btn-login">
+                Entrar
+              </button>
+              <button
+                type="button"
+                class="user-profile hidden"
+                id="btn-profile"
+                title="Perfil"
+                aria-expanded="false"
+                aria-controls="profile-menu"
+              >
+                <img
+                  class="avatar-photo"
+                  src="/mapa/icons/profile/amanda-waller.png"
+                  alt=""
+                  width="36"
+                  height="36"
+                />
+                <div class="user-details">
+                  <span class="user-name">Amanda Waller</span>
+                  <span class="user-location">Nível 12</span>
+                </div>
+              </button>
+
+              <div class="profile-menu hidden" id="profile-menu" role="menu" aria-label="Perfil">
+                <div class="profile-menu-identity">
+                  <img
+                    class="avatar-photo avatar-photo-lg"
+                    src="/mapa/icons/profile/amanda-waller.png"
+                    alt=""
+                    width="48"
+                    height="48"
+                  />
+                  <div class="profile-menu-identity-copy">
+                    <p class="user-name">Amanda Waller</p>
+                    <div class="profile-level-row">
+                      <span class="level-badge">12</span>
+                      <span>Nível</span>
+                      <span class="level-xp">2450/3000 XP</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                      <div class="progress-bar-fill"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="button" class="profile-menu-link" role="menuitem">
+                  <span class="profile-icon-tile">
+                    <span class="ds-icon" style="width: 20px; height: 20px">
+                      <img src="/mapa/icons/profile/network.svg" alt="" width="20" height="20" />
+                    </span>
+                  </span>
+                  <span>Minha rede</span>
+                  <span class="ds-icon profile-menu-chevron" style="width: 14px; height: 14px">
+                    <img src="/mapa/icons/profile/chevron-right.svg" alt="" width="14" height="14" />
+                  </span>
+                </button>
+
+                <div class="profile-menu-block">
+                  <h3 class="profile-menu-heading">Organizações</h3>
+                  <div class="profile-empty">
+                    <span class="profile-icon-tile profile-icon-tile-lg">
+                      <span class="ds-icon" style="width: 22px; height: 22px">
+                        <img src="/mapa/icons/profile/organization.svg" alt="" width="22" height="22" />
+                      </span>
+                    </span>
+                    <p class="profile-empty-title">Nenhuma organização</p>
+                    <p class="profile-empty-text">Crie ou entre em uma para começar.</p>
+                    <button type="button" class="card-btn card-btn-primary profile-empty-btn">
+                      <span class="ds-icon ds-icon-14">
+                        <img src="/mapa/icons/plus.svg" alt="" width="14" height="14" />
+                      </span>
+                      Adicionar organização
+                    </button>
+                  </div>
+                </div>
+
+                <div class="profile-menu-block">
+                  <h3 class="profile-menu-heading">Minha jornada</h3>
+                  <ul class="profile-stats">
+                    <li class="profile-stat">
+                      <span class="profile-icon-tile">
+                        <span class="ds-icon" style="width: 22px; height: 22px">
+                          <img src="/mapa/icons/profile/saberes.svg" alt="" width="22" height="22" />
+                        </span>
+                      </span>
+                      <span class="profile-stat-copy">
+                        <span class="profile-stat-label">Saberes</span>
+                        <span class="profile-stat-value">12 conquistados</span>
+                      </span>
+                    </li>
+                    <li class="profile-stat">
+                      <span class="profile-icon-tile">
+                        <span class="ds-icon" style="width: 22px; height: 22px">
+                          <img src="/mapa/icons/profile/certificados.svg" alt="" width="22" height="22" />
+                        </span>
+                      </span>
+                      <span class="profile-stat-copy">
+                        <span class="profile-stat-label">Certificados</span>
+                        <span class="profile-stat-value">3 completos</span>
+                      </span>
+                    </li>
+                    <li class="profile-stat">
+                      <span class="profile-icon-tile">
+                        <span class="ds-icon" style="width: 22px; height: 22px">
+                          <img src="/mapa/icons/profile/horas.svg" alt="" width="22" height="22" />
+                        </span>
+                      </span>
+                      <span class="profile-stat-copy">
+                        <span class="profile-stat-label">Horas de aprendizado</span>
+                        <span class="profile-stat-value">48 horas</span>
+                      </span>
+                    </li>
+                    <li class="profile-stat">
+                      <span class="profile-icon-tile">
+                        <span class="ds-icon" style="width: 22px; height: 22px">
+                          <img src="/mapa/icons/profile/manuais.svg" alt="" width="22" height="22" />
+                        </span>
+                      </span>
+                      <span class="profile-stat-copy">
+                        <span class="profile-stat-label">Manuais</span>
+                        <span class="profile-stat-value">48 completos</span>
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+
+                <button type="button" class="profile-menu-link profile-menu-logout" id="btn-logout" role="menuitem">
+                  <span class="profile-icon-tile">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                  </span>
+                  <span>Sair</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Container do Mapa -->
+        <div class="map-container">
+          <!-- Toolbar Flutuante Superior (Estilo Felt) -->
+          <div class="floating-toolbar">
+            <div class="tool-group" id="pointer-tool-group">
+              <div class="tool-split active" id="tool-pointer-split">
+                <button
+                  type="button"
+                  class="tool-split-main"
+                  id="tool-pointer"
+                  aria-label="Selecionar"
+                  title="Selecionar"
+                >
+                  <span class="ds-icon ds-icon-16">
+                    <img id="tool-pointer-icon" src="/mapa/icons/mouse-pointer.svg" alt="" width="16" height="16" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="tool-split-chevron"
+                  id="tool-pointer-menu-btn"
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-controls="pointer-tool-flyout"
+                  aria-label="Mais ferramentas"
+                >
+                  <span class="ds-icon" style="width: 10px; height: 6px">
+                    <img src="/mapa/icons/chevron-down.svg" alt="" width="10" height="6" />
+                  </span>
+                </button>
+              </div>
+              <div class="tool-flyout hidden" id="pointer-tool-flyout" role="menu">
+                <button type="button" class="tool-flyout-item selected" role="menuitem" data-tool="select" id="tool-select">
+                  <span class="tool-flyout-check" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="ds-icon ds-icon-16">
+                    <img src="/mapa/icons/mouse-pointer.svg" alt="" width="16" height="16" />
+                  </span>
+                  <span class="tool-flyout-label">Selecionar</span>
+                </button>
+                <button type="button" class="tool-flyout-item" role="menuitem" data-tool="pan" id="tool-pan">
+                  <span class="tool-flyout-check" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="ds-icon ds-icon-16">
+                    <img src="/mapa/icons/hand.svg" alt="" width="16" height="16" />
+                  </span>
+                  <span class="tool-flyout-label">Mover</span>
+                </button>
+              </div>
+            </div>
+
+            <span class="tool-divider" aria-hidden="true"></span>
+
+            <button class="tool-btn btn-primary-action" id="btn-nova-missao" data-requires-auth>
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/plus.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Novo Marcador</span>
+            </button>
+
+            <button class="tool-btn" id="tool-desenhar" data-requires-auth>
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/star.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Desenhar</span>
+            </button>
+
+            <button class="tool-btn" data-panel="filters-panel">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/filter.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Filtro</span>
+            </button>
+
+            <button class="tool-btn" data-panel="figital-panel">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/map.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Painel Figital</span>
+            </button>
+          </div>
+
+          <!-- Sub-Toolbar de Desenho (Aparece ao clicar em Desenhar) -->
+          <div class="drawing-subbar hidden" id="drawing-subbar">
+            <span class="drawing-mode-label">Modo Desenho:</span>
+            <button
+              type="button"
+              class="draw-btn"
+              data-draw="linha"
+            >
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/pencil.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Linha</span>
+            </button>
+            <button
+              type="button"
+              class="draw-btn active"
+              data-draw="poligono"
+            >
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/pentagon.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Polígono</span>
+            </button>
+            <span class="tool-divider" aria-hidden="true"></span>
+            <div class="draw-color-group">
+              <span class="draw-color-label" id="draw-color-label">Cor</span>
+              <div class="color-swatches" id="draw-color-swatches" role="listbox" aria-label="Cor da área">
+                <button type="button" class="color-swatch active" data-color="#1f7a4c" style="background:#1f7a4c" aria-label="Verde"></button>
+                <button type="button" class="color-swatch" data-color="#d4832a" style="background:#d4832a" aria-label="Âmbar"></button>
+                <button type="button" class="color-swatch" data-color="#b3241b" style="background:#b3241b" aria-label="Vermelho"></button>
+                <button type="button" class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" aria-label="Ciano"></button>
+                <button type="button" class="color-swatch" data-color="#7c4dff" style="background:#7c4dff" aria-label="Roxo"></button>
+              </div>
+              <input type="color" id="draw-color-picker" value="#1f7a4c" aria-label="Cor da área" />
+            </div>
+          </div>
+
+          <!-- Sub-Toolbar de Marcador (Aparece ao clicar em Novo Marcador) -->
+          <div class="drawing-subbar hidden" id="marker-subbar">
+            <span class="drawing-mode-label">Tipo:</span>
+            <button type="button" class="draw-btn" data-place="missao">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/sprout.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Missão</span>
+            </button>
+            <button type="button" class="draw-btn" data-place="mutirao">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/users.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Mutirão</span>
+            </button>
+            <button type="button" class="draw-btn" data-place="marcador">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/map-pin.svg" alt="" width="16" height="16" />
+              </span>
+              <span>Marcador</span>
+            </button>
+          </div>
+
+          <!-- Ações da forma selecionada (canto superior direito do quadrado) -->
+          <div class="shape-actions hidden" id="shape-actions">
+            <button type="button" class="shape-action-btn" id="btn-shape-add" data-requires-auth aria-label="Adicionar à área" aria-expanded="false" aria-haspopup="menu" aria-controls="shape-add-flyout">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/plus.svg" alt="" width="16" height="16" />
+              </span>
+            </button>
+            <button type="button" class="shape-action-btn hidden" id="btn-shape-percurso" data-requires-auth aria-label="Ficha do percurso" aria-haspopup="dialog" aria-controls="percurso-edit-panel" title="Ficha do percurso">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/map.svg" alt="" width="16" height="16" />
+              </span>
+            </button>
+            <button type="button" class="shape-action-btn" id="btn-shape-style" data-requires-auth aria-label="Estilo">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/palette.svg" alt="" width="16" height="16" />
+              </span>
+            </button>
+            <button type="button" class="shape-action-btn" id="btn-shape-edit" data-requires-auth aria-label="Editar nome">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/pencil.svg" alt="" width="16" height="16" />
+              </span>
+            </button>
+            <button type="button" class="shape-action-btn shape-action-danger" id="btn-shape-delete" data-requires-auth aria-label="Excluir">
+              <span class="ds-icon ds-icon-16">
+                <img src="/mapa/icons/trash-2.svg" alt="" width="16" height="16" />
+              </span>
+            </button>
+            <div class="shape-add-flyout hidden" id="shape-add-flyout" role="menu">
+              <button type="button" class="tool-flyout-item" role="menuitem" data-attach="missao">
+                <span class="ds-icon ds-icon-16">
+                  <img src="/mapa/icons/sprout.svg" alt="" width="16" height="16" />
+                </span>
+                <span class="tool-flyout-label">Missão</span>
+              </button>
+              <button type="button" class="tool-flyout-item" role="menuitem" data-attach="totem">
+                <span class="ds-icon ds-icon-16">
+                  <img src="/mapa/icons/star.svg" alt="" width="16" height="16" />
+                </span>
+                <span class="tool-flyout-label">Totem</span>
+              </button>
+              <button type="button" class="tool-flyout-item" role="menuitem" data-attach="marcador">
+                <span class="ds-icon ds-icon-16">
+                  <img src="/mapa/icons/map-pin.svg" alt="" width="16" height="16" />
+                </span>
+                <span class="tool-flyout-label">Marcador</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Painel compacto de edição da forma -->
+          <div class="shape-edit-panel hidden" id="shape-edit-panel" role="dialog" aria-labelledby="shape-edit-title">
+            <h3 class="shape-edit-title" id="shape-edit-title">Editar nome</h3>
+            <div class="form-group" id="shape-name-group">
+              <label class="form-label" for="input-shape-name">Nome</label>
+              <input type="text" id="input-shape-name" class="form-input" maxlength="80" />
+            </div>
+            <div class="form-group" id="shape-stroke-group">
+              <label class="form-label" for="input-shape-stroke">Cor da linha</label>
+              <div class="color-swatches" id="edit-stroke-swatches">
+                <button type="button" class="color-swatch" data-color="#1f7a4c" style="background:#1f7a4c" aria-label="Verde"></button>
+                <button type="button" class="color-swatch" data-color="#d4832a" style="background:#d4832a" aria-label="Âmbar"></button>
+                <button type="button" class="color-swatch" data-color="#b3241b" style="background:#b3241b" aria-label="Vermelho"></button>
+                <button type="button" class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" aria-label="Ciano"></button>
+                <button type="button" class="color-swatch" data-color="#7c4dff" style="background:#7c4dff" aria-label="Roxo"></button>
+              </div>
+              <input type="color" id="input-shape-stroke" value="#1f7a4c" aria-label="Cor da linha" />
+            </div>
+            <div class="form-group" id="shape-fill-group">
+              <label class="form-label" for="input-shape-fill">Cor da área</label>
+              <div class="color-swatches" id="edit-fill-swatches">
+                <button type="button" class="color-swatch" data-color="#1f7a4c" style="background:#1f7a4c" aria-label="Verde"></button>
+                <button type="button" class="color-swatch" data-color="#d4832a" style="background:#d4832a" aria-label="Âmbar"></button>
+                <button type="button" class="color-swatch" data-color="#b3241b" style="background:#b3241b" aria-label="Vermelho"></button>
+                <button type="button" class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" aria-label="Ciano"></button>
+                <button type="button" class="color-swatch" data-color="#7c4dff" style="background:#7c4dff" aria-label="Roxo"></button>
+              </div>
+              <input type="color" id="input-shape-fill" value="#1f7a4c" aria-label="Cor da área" />
+            </div>
+            <div class="shape-edit-footer">
+              <button type="button" class="btn-secondary" id="btn-shape-edit-cancel">Cancelar</button>
+              <button type="button" class="card-btn card-btn-primary" id="btn-shape-edit-save">Salvar</button>
+            </div>
+          </div>
+
+          <!-- Ficha do percurso (Fase 1.3) — aparece quando a forma selecionada já tem totens -->
+          <div class="shape-edit-panel percurso-panel hidden" id="percurso-edit-panel" role="dialog" aria-labelledby="percurso-edit-title">
+            <h3 class="shape-edit-title" id="percurso-edit-title">Ficha do percurso</h3>
+            <p class="percurso-geometria-nome" id="percurso-geometria-nome"></p>
+
+            <div id="percurso-status" class="percurso-status"></div>
+
+            <div class="form-group">
+              <label class="form-label" for="percurso-modo">Modo de progresso *</label>
+              <select id="percurso-modo" class="form-select">
+                <option value="sequencial">Sequencial</option>
+                <option value="livre">Livre</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="percurso-recompensa-final">Recompensa final</label>
+              <input type="text" id="percurso-recompensa-final" class="form-input" placeholder="Ex: Insígnia Serra do Vulcão" />
+              <span class="form-helper-text">Liberada só com as missões obrigatórias concluídas (RN-FIG-029).</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="percurso-consentimento">Texto de consentimento</label>
+              <textarea id="percurso-consentimento" class="form-textarea" rows="3" placeholder="Explique para que os insumos serão usados (pesquisa, acervo interno, publicação no mapa)."></textarea>
+            </div>
+
+            <div class="form-group percurso-periodo-group">
+              <label class="form-label">Período (opcional)</label>
+              <div class="filter-date-row">
+                <label class="filter-date-field" for="percurso-periodo-inicio">
+                  <span>De</span>
+                  <input type="date" id="percurso-periodo-inicio" class="filter-date-input" />
+                </label>
+                <label class="filter-date-field" for="percurso-periodo-fim">
+                  <span>Até</span>
+                  <input type="date" id="percurso-periodo-fim" class="filter-date-input" />
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group percurso-toggle-row">
+              <label class="percurso-toggle">
+                <input type="checkbox" id="percurso-ativo" />
+                <span>Percurso ativo</span>
+              </label>
+              <span class="form-helper-text" id="percurso-ativo-helper">Inativo: participantes não iniciam jornada (RN-FIG-007).</span>
+            </div>
+
+            <div class="form-group percurso-toggle-row">
+              <label class="percurso-toggle">
+                <input type="checkbox" id="percurso-replay" />
+                <span>Permitir recomeçar o percurso (replay)</span>
+              </label>
+              <span class="form-helper-text">Só usado quando a jornada com rede existir (Fase 4), mas já fica salvo aqui (RN-FIG-024).</span>
+            </div>
+
+            <div class="percurso-visibilidade-aviso" id="percurso-visibilidade-aviso"></div>
+
+            <div class="form-group">
+              <div class="percurso-totens-header">
+                <label class="form-label">Totens deste percurso</label>
+                <span class="card-tab-badge" id="percurso-totens-count">0</span>
+              </div>
+              <div id="percurso-totens-list" class="percurso-totens-list"></div>
+            </div>
+
+            <div class="shape-edit-footer">
+              <button type="button" class="btn-secondary" id="btn-percurso-cancel">Fechar</button>
+              <button type="button" class="card-btn card-btn-primary" id="btn-percurso-save">Salvar percurso</button>
+            </div>
+          </div>
+
+          <!-- Painel Flutuante de Filtro (camadas + filtros de exibição) -->
+          <div class="floating-panel hidden" id="filters-panel">
+            <div class="panel-header-row">
+              <div class="panel-title-group">
+                <span class="ds-icon ds-icon-18">
+                  <img src="/mapa/icons/filter.svg" alt="" width="18" height="18" />
+                </span>
+                <span class="panel-title">Filtro</span>
+              </div>
+              <button class="btn-close-panel" type="button" aria-label="Fechar">
+                <span class="ds-icon ds-icon-14">
+                  <img src="/mapa/icons/x.svg" alt="" width="14" height="14" />
+                </span>
+              </button>
+            </div>
+            <div class="panel-divider"></div>
+            <ul class="layer-list">
+              <li class="layer-item">
+                <label class="layer-row">
+                  <input type="checkbox" class="layer-checkbox" data-layer="missoes" checked />
+                  <span class="ds-checkbox" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="layer-badge missao">
+                    <span class="ds-icon ds-icon-16">
+                      <img src="/mapa/icons/sprout.svg" alt="" width="16" height="16" />
+                    </span>
+                  </span>
+                  <span class="layer-label">Missões</span>
+                </label>
+              </li>
+              <li class="layer-item">
+                <label class="layer-row">
+                  <input type="checkbox" class="layer-checkbox" data-layer="mutiroes" checked />
+                  <span class="ds-checkbox" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="layer-badge mutirao">
+                    <span class="ds-icon ds-icon-16">
+                      <img src="/mapa/icons/users.svg" alt="" width="16" height="16" />
+                    </span>
+                  </span>
+                  <span class="layer-label">Mutirões</span>
+                </label>
+              </li>
+              <li class="layer-item">
+                <label class="layer-row">
+                  <input type="checkbox" class="layer-checkbox" data-layer="memorias" checked />
+                  <span class="ds-checkbox" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="layer-badge memoria">
+                    <span class="ds-icon ds-icon-16">
+                      <img src="/mapa/icons/camera.svg" alt="" width="16" height="16" />
+                    </span>
+                  </span>
+                  <span class="layer-label">Memórias</span>
+                </label>
+              </li>
+              <li class="layer-item">
+                <label class="layer-row">
+                  <input type="checkbox" class="layer-checkbox" data-layer="marcadores" checked />
+                  <span class="ds-checkbox" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="layer-badge marcador">
+                    <span class="ds-icon ds-icon-16">
+                      <img src="/mapa/icons/map-pin.svg" alt="" width="16" height="16" />
+                    </span>
+                  </span>
+                  <span class="layer-label">Marcadores</span>
+                </label>
+              </li>
+              <li class="layer-item">
+                <label class="layer-row">
+                  <input type="checkbox" class="layer-checkbox" data-layer="totens" checked />
+                  <span class="ds-checkbox" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="layer-badge totem">
+                    <span class="ds-icon ds-icon-16">
+                      <img src="/mapa/icons/star.svg" alt="" width="16" height="16" />
+                    </span>
+                  </span>
+                  <span class="layer-label">Totens (Figital)</span>
+                </label>
+              </li>
+              <li class="layer-item">
+                <label class="layer-row">
+                  <input type="checkbox" class="layer-checkbox" data-layer="areas" checked />
+                  <span class="ds-checkbox" aria-hidden="true">
+                    <img src="/mapa/icons/check.svg" alt="" width="12" height="12" />
+                  </span>
+                  <span class="layer-badge areas">
+                    <span class="ds-icon ds-icon-16">
+                      <img src="/mapa/icons/box.svg" alt="" width="16" height="16" />
+                    </span>
+                  </span>
+                  <span class="layer-label">Áreas de intervenção</span>
+                </label>
+              </li>
+              <li class="layer-item is-disabled">
+                <label class="layer-row">
+                  <input type="checkbox" class="layer-checkbox" disabled />
+                  <span class="ds-checkbox" aria-hidden="true"></span>
+                  <span class="layer-badge infra">
+                    <span class="ds-icon ds-icon-16">
+                      <img src="/mapa/icons/home.svg" alt="" width="16" height="16" />
+                    </span>
+                  </span>
+                  <span class="layer-label">Infraestrutura comunitária</span>
+                </label>
+              </li>
+            </ul>
+            <div class="panel-divider"></div>
+            <div class="mapa-base-section">
+              <p class="section-label">Mapa Base</p>
+              <div class="map-base-selector">
+                <button type="button" class="base-option active" data-base="satellite">
+                  Satélite
+                </button>
+                <button type="button" class="base-option" data-base="street">
+                  Vetorial
+                </button>
+              </div>
+            </div>
+            <div class="panel-divider"></div>
+            <p class="filter-preview-note" role="note">
+              Pré-visualização — status, categoria e período ainda não alteram o mapa.
+            </p>
+            <div class="filter-status-section">
+              <p class="filter-section-label">Status da Missão:</p>
+              <label class="filter-status-row">
+                <input type="checkbox" class="filter-status-checkbox" data-status="andamento" checked />
+                <span class="ds-checkbox ds-checkbox-blue" aria-hidden="true">
+                  <img src="/mapa/icons/check-sm.svg" alt="" width="10" height="8" />
+                </span>
+                <img class="status-dot" src="/mapa/icons/indicator-green.svg" alt="" width="16" height="16" />
+                <span>Em andamento</span>
+              </label>
+              <label class="filter-status-row">
+                <input type="checkbox" class="filter-status-checkbox" data-status="planejadas" checked />
+                <span class="ds-checkbox ds-checkbox-blue" aria-hidden="true">
+                  <img src="/mapa/icons/check-sm.svg" alt="" width="10" height="8" />
+                </span>
+                <img class="status-dot" src="/mapa/icons/indicator-gold.svg" alt="" width="16" height="16" />
+                <span>Planejadas</span>
+              </label>
+              <label class="filter-status-row">
+                <input type="checkbox" class="filter-status-checkbox" data-status="concluidas" checked />
+                <span class="ds-checkbox ds-checkbox-blue" aria-hidden="true">
+                  <img src="/mapa/icons/check-sm.svg" alt="" width="10" height="8" />
+                </span>
+                <span class="status-done" aria-hidden="true">
+                  <img src="/mapa/icons/check-sm.svg" alt="" width="10" height="8" />
+                </span>
+                <span>Concluídas</span>
+              </label>
+            </div>
+            <div class="filter-category-section">
+              <p class="filter-section-label">Categoria:</p>
+              <button
+                type="button"
+                class="filter-select-trigger"
+                id="filter-category-trigger"
+                aria-expanded="false"
+                aria-haspopup="listbox"
+              >
+                <span id="filter-category-label">Todas as categorias</span>
+                <span class="ds-icon" style="width: 10px; height: 6px">
+                  <img src="/mapa/icons/chevron-down.svg" alt="" width="10" height="6" />
+                </span>
+              </button>
+              <ul class="filter-dropdown hidden" id="filter-category-menu" role="listbox">
+                <li>
+                  <button type="button" class="filter-option selected" data-value="todas">
+                    Todas as categorias
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="filter-option" data-value="meio-ambiente">
+                    Meio Ambiente
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="filter-option" data-value="recursos-hidricos">
+                    Recursos Hídricos
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="filter-option" data-value="riscos">
+                    Riscos e Alagamentos
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div class="filter-date-section">
+              <p class="filter-section-label">Período</p>
+              <div class="filter-date-row">
+                <label class="filter-date-field" for="filter-date-from">
+                  <span>De</span>
+                  <input type="date" id="filter-date-from" class="filter-date-input" />
+                </label>
+                <label class="filter-date-field" for="filter-date-to">
+                  <span>Até</span>
+                  <input type="date" id="filter-date-to" class="filter-date-input" />
+                </label>
+              </div>
+              <p class="filter-date-help">Mostra o que aconteceu neste intervalo.</p>
+              <button type="button" class="filter-clear-dates hidden" id="filter-clear-dates">
+                Limpar período
+              </button>
+            </div>
+          </div>
+
+          <!-- Painel Flutuante de Legenda -->
+          <div class="floating-panel hidden" id="legend-panel">
+            <div class="panel-header-row">
+              <div class="panel-title-group">
+                <span class="ds-icon ds-icon-18">
+                  <img src="/mapa/icons/tag.svg" alt="" width="18" height="18" />
+                </span>
+                <span class="panel-title">Legenda do Território</span>
+              </div>
+              <button class="btn-close-panel" type="button" aria-label="Fechar">
+                <span class="ds-icon ds-icon-14">
+                  <img src="/mapa/icons/x.svg" alt="" width="14" height="14" />
+                </span>
+              </button>
+            </div>
+            <div class="panel-divider"></div>
+            <div class="legend-list">
+              <div class="legend-row">
+                <span class="layer-badge missao">
+                  <span class="ds-icon ds-icon-16">
+                    <img src="/mapa/icons/sprout.svg" alt="" width="16" height="16" />
+                  </span>
+                </span>
+                <span><strong>Missão:</strong> Ações contínuas de impacto</span>
+              </div>
+              <div class="legend-row">
+                <span class="layer-badge mutirao">
+                  <span class="ds-icon ds-icon-16">
+                    <img src="/mapa/icons/users.svg" alt="" width="16" height="16" />
+                  </span>
+                </span>
+                <span><strong>Mutirão:</strong> Eventos coletivos pontuais</span>
+              </div>
+              <div class="legend-row">
+                <span class="layer-badge memoria">
+                  <span class="ds-icon ds-icon-16">
+                    <img src="/mapa/icons/camera.svg" alt="" width="16" height="16" />
+                  </span>
+                </span>
+                <span><strong>Memória:</strong> Fotos e relatos históricos</span>
+              </div>
+              <div class="legend-row">
+                <span class="layer-badge marcador">
+                  <span class="ds-icon ds-icon-16">
+                    <img src="/mapa/icons/map-pin.svg" alt="" width="16" height="16" />
+                  </span>
+                </span>
+                <span><strong>Marcador:</strong> Pontos de atenção ou alertas</span>
+              </div>
+              <div class="legend-row">
+                <span class="layer-badge totem">
+                  <span class="ds-icon ds-icon-16">
+                    <img src="/mapa/icons/star.svg" alt="" width="16" height="16" />
+                  </span>
+                </span>
+                <span><strong>Totem:</strong> Ponto de jornada Figital com QR</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel Flutuante do Mapa Figital (Fase 1.6 e 1.8) -->
+          <div class="floating-panel hidden" id="figital-panel">
+            <div class="panel-header-row">
+              <div class="panel-title-group">
+                <span class="ds-icon ds-icon-18">
+                  <img src="/mapa/icons/star.svg" alt="" width="18" height="18" />
+                </span>
+                <span class="panel-title">Painel do mapa · Figital</span>
+              </div>
+              <button class="btn-close-panel" type="button" aria-label="Fechar">
+                <span class="ds-icon ds-icon-14">
+                  <img src="/mapa/icons/x.svg" alt="" width="14" height="14" />
+                </span>
+              </button>
+            </div>
+            <div class="panel-divider"></div>
+
+            <div class="figital-panel-section">
+              <p class="section-label">Visibilidade do mapa</p>
+              <div class="map-base-selector" id="mapa-visibilidade-selector">
+                <button type="button" class="base-option active" data-visibilidade="privado" data-requires-auth>Privado</button>
+                <button type="button" class="base-option" data-visibilidade="publico" data-requires-auth>Público</button>
+              </div>
+              <p class="form-helper-text" id="mapa-visibilidade-helper">Privado: só quem colabora no mapa vê a geometria e inicia jornada de teste (RN-FIG-006).</p>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="figital-panel-section">
+              <p class="section-label">Percursos deste mapa</p>
+              <div id="figital-percursos-list" class="figital-percursos-list">
+                <p class="figital-empty-state">Nenhum percurso ainda. Coloque um totem numa trilha ou área para criar o primeiro.</p>
+              </div>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="figital-panel-section">
+              <p class="section-label">Indicadores (§16.3)</p>
+              <div class="figital-indicadores-grid" id="figital-indicadores">
+                <div class="figital-indicador"><strong id="ind-percursos">0</strong><span>Percursos</span></div>
+                <div class="figital-indicador"><strong id="ind-totens">0</strong><span>Totens</span></div>
+                <div class="figital-indicador"><strong id="ind-jornadas">0</strong><span>Jornadas iniciadas</span></div>
+                <div class="figital-indicador"><strong id="ind-conclusao">—</strong><span>Taxa de conclusão</span></div>
+              </div>
+              <p class="form-helper-text">Sem app do participante ainda (Fase 3), estes números ficam zerados — o painel já existe para a Fase 5 preencher.</p>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="figital-panel-section">
+              <p class="section-label">Insumos</p>
+              <p class="figital-empty-state">Nenhum insumo recebido ainda.</p>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="figital-panel-section">
+              <p class="section-label">Moderação de memórias públicas (RN-FIG-035)</p>
+              <p class="figital-empty-state">Fila vazia. Insumos marcados "mapa público" aparecem aqui para aprovação.</p>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="figital-panel-section figital-export-row">
+              <p class="section-label">Exportar</p>
+              <div class="figital-export-buttons">
+                <button type="button" class="btn-secondary" id="btn-export-geojson">Exportar GeoJSON</button>
+                <button type="button" class="btn-secondary" id="btn-export-csv">Exportar CSV (totens)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- DIV DO MAPA LEAFLET -->
+          <div id="map"></div>
+        </div>
+      </main>
+    </div>
+
+    <!-- =========================================================================
+       3. MODAL DE VISUALIZAÇÃO DE MEMÓRIA
+       ========================================================================= -->
+    <div class="modal-backdrop" id="memory-modal" role="dialog" aria-modal="true" aria-labelledby="memory-title">
+      <div class="memory-modal-card">
+        <div class="memory-modal-header">
+          <div class="memory-meta-row">
+            <span class="badge-memoria">Memória</span>
+            <div class="memory-author-close">
+              <span class="memory-author" id="memory-author">João • 19/05/2026</span>
+              <button type="button" class="btn-close-panel" id="btn-close-memory" aria-label="Fechar">
+                <span class="ds-icon ds-icon-14">
+                  <img src="/mapa/icons/close.svg" alt="" width="14" height="14" />
+                </span>
+              </button>
+            </div>
+          </div>
+          <h2 class="memory-title" id="memory-title">Primeira colheita da horta</h2>
+          <div class="marker-actions memory-marker-actions" id="memory-marker-actions">
+            <button type="button" class="marker-action-btn" id="btn-memory-style" data-requires-auth aria-label="Estilo" aria-expanded="false" aria-controls="memory-style-popover">
+              <span class="ds-icon ds-icon-18">
+                <img src="/mapa/icons/palette.svg" alt="" width="18" height="18" />
+              </span>
+            </button>
+            <button type="button" class="marker-action-btn" id="btn-memory-edit" data-requires-auth aria-label="Editar">
+              <span class="ds-icon ds-icon-18">
+                <img src="/mapa/icons/pencil.svg" alt="" width="18" height="18" />
+              </span>
+            </button>
+            <button type="button" class="marker-action-btn marker-action-danger" id="btn-memory-delete" data-requires-auth aria-label="Excluir">
+              <span class="ds-icon ds-icon-18">
+                <img src="/mapa/icons/trash-2.svg" alt="" width="18" height="18" />
+              </span>
+            </button>
+          </div>
+          <div class="marker-style-popover hidden" id="memory-style-popover" role="group" aria-label="Cor da memória"></div>
+        </div>
+        <div class="memory-gallery">
+          <img class="memory-featured" id="memory-featured" src="" alt="Foto da memória" />
+          <div class="memory-thumbs" id="memory-thumbs"></div>
+        </div>
+        <p class="memory-description" id="memory-description"></p>
+        <div class="memory-comments">
+          <div class="memory-comments-header">
+            <h3>Comentários</h3>
+            <span class="comments-count" id="memory-comments-count">0</span>
+          </div>
+          <div class="memory-comments-list" id="memory-comments-list"></div>
+        </div>
+        <div class="memory-input-footer">
+          <input
+            type="text"
+            class="memory-comment-field"
+            id="memory-comment-input"
+            placeholder="Escreva um comentário..."
+          />
+          <button type="button" class="memory-send-btn" id="memory-send-btn" data-requires-auth>Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmação de exclusão -->
+    <div class="confirm-backdrop hidden" id="confirm-delete" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-message">
+      <div class="confirm-card">
+        <p id="confirm-delete-message">Excluir esta área? Isso não pode ser desfeito.</p>
+        <div class="confirm-actions">
+          <button type="button" class="btn-secondary" id="btn-confirm-cancel">Cancelar</button>
+          <button type="button" class="card-btn card-btn-danger" id="btn-confirm-delete">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================================
+       4. MODAL DE CRIAÇÃO (+ Nova Missão)
+       ========================================================================= -->
+    <div class="modal-backdrop" id="creation-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title" id="creation-modal-title">Novo Elemento no Mapa</h2>
+          <button class="btn-close-panel" id="btn-close-modal-x" type="button" aria-label="Fechar">
+            <span class="ds-icon ds-icon-14">
+              <img src="/mapa/icons/close.svg" alt="" width="14" height="14" />
+            </span>
+          </button>
+        </div>
+
+        <div class="modal-tabs" id="creation-modal-tabs">
+          <button type="button" class="modal-tab active" data-tab="missao">
+            <span class="tab-icon"><img src="/mapa/icons/sprout.svg" alt="" width="16" height="16" /></span>
+            Missão
+          </button>
+          <button type="button" class="modal-tab" data-tab="mutirao">
+            <span class="tab-icon"><img src="/mapa/icons/users.svg" alt="" width="16" height="16" /></span>
+            Mutirão
+          </button>
+          <button type="button" class="modal-tab hidden" data-tab="memoria" tabindex="-1">
+            <span class="tab-icon"><img src="/mapa/icons/camera.svg" alt="" width="16" height="16" /></span>
+            Memória
+          </button>
+          <button type="button" class="modal-tab hidden" data-tab="totem" tabindex="-1">
+            <span class="tab-icon"><img src="/mapa/icons/star.svg" alt="" width="16" height="16" /></span>
+            Totem
+          </button>
+          <button type="button" class="modal-tab" data-tab="marcador">
+            <span class="tab-icon"><img src="/mapa/icons/map-pin.svg" alt="" width="16" height="16" /></span>
+            Marcador
+          </button>
+        </div>
+
+        <form id="creation-form">
+          <div class="modal-body">
+            <!-- 1. ABA MISSÃO -->
+            <div class="tab-panel active" id="tab-content-missao">
+              <div class="form-group">
+                <label class="form-label" for="input-titulo-missao">Título da Missão *</label>
+                <input
+                  type="text"
+                  id="input-titulo-missao"
+                  class="form-input"
+                  placeholder="Ex: Recuperação da Nascente Sarapuí"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-descricao-missao">Descrição da Ação</label>
+                <textarea
+                  id="input-descricao-missao"
+                  class="form-textarea"
+                  rows="3"
+                  placeholder="Descreva os objetivos, impacto esperado e como os voluntários podem participar..."
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-instrucao-missao">O que deve ser feito</label>
+                <textarea
+                  id="input-instrucao-missao"
+                  class="form-textarea"
+                  rows="2"
+                  placeholder="Ex: Recolha o lixo às margens da nascente e registre com foto."
+                ></textarea>
+              </div>
+
+              <div class="form-group totem-insumos-group">
+                <div class="percurso-totens-header">
+                  <label class="form-label" id="missao-insumos-label">O que coletar</label>
+                  <button type="button" class="btn-link-add" id="btn-add-insumo-missao">Adicionar item</button>
+                </div>
+                <div id="missao-insumos-list" class="totem-insumos-list" role="group" aria-labelledby="missao-insumos-label"></div>
+                <span class="form-helper-text">Itens no mesmo grupo com mínimo 1: a pessoa escolhe um, como áudio ou texto.</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-recompensa-missao">Recompensa da missão</label>
+                <input type="text" id="input-recompensa-missao" class="form-input" placeholder="Ex: Insígnia Guardião das Águas" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="select-categoria-missao">Categoria</label>
+                <select id="select-categoria-missao" class="form-select">
+                  <option value="Meio Ambiente">Meio Ambiente & Reflorestamento</option>
+                  <option value="Proteção de Nascentes">Proteção de Nascentes e Rios</option>
+                  <option value="Prevenção de Riscos">Prevenção de Alagamentos e Riscos</option>
+                  <option value="Agricultura Urbana">Agricultura Urbana e Hortas</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="select-cenario-missao">Cenário da jornada (app)</label>
+                <select id="select-cenario-missao" class="form-select">
+                  <option value="horta">Horta do bairro</option>
+                  <option value="rio">Rio / nascente</option>
+                  <option value="serra">Serra / trilha</option>
+                </select>
+                <span class="form-helper-text">Paisagem de fundo da cena de fala no app do participante.</span>
+              </div>
+
+              <div class="form-group">
+                <label class="switch-field">
+                  <span class="switch-field-label">Tem prazo?</span>
+                  <span class="switch">
+                    <input type="checkbox" id="toggle-prazo-missao" checked />
+                    <span class="switch-track"><span class="switch-thumb"></span></span>
+                  </span>
+                </label>
+                <div id="prazo-missao-wrapper">
+                  <label class="form-label" for="input-prazo-missao">Prazo Estimado</label>
+                  <input type="date" id="input-prazo-missao" class="form-input" value="2026-09-30" />
+                </div>
+              </div>
+
+              <label class="switch-field">
+                <span class="switch-field-label">Tem personagem que fala? (NPC)</span>
+                <span class="switch">
+                  <input type="checkbox" id="toggle-npc-missao" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </span>
+              </label>
+
+              <div id="missao-npc-section" hidden>
+                <div class="form-group">
+                  <label class="form-label" for="input-npc-nome-missao">Nome de quem fala</label>
+                  <input type="text" id="input-npc-nome-missao" class="form-input" placeholder="Ex: Guardiã da Serra" value="Guardiã do território" />
+                </div>
+
+                <div class="form-group">
+                  <div class="percurso-totens-header">
+                    <label class="form-label" id="missao-falas-label">O que essa pessoa diz</label>
+                    <button type="button" class="btn-link-add" id="btn-add-fala-missao">Adicionar fala</button>
+                  </div>
+                  <div id="missao-npc-falas" class="totem-npc-falas" role="group" aria-labelledby="missao-falas-label"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. ABA MUTIRÃO -->
+            <div class="tab-panel" id="tab-content-mutirao" style="display: none;">
+              <p class="tab-description-text">
+                Vincule um mutirão já planejado a este ponto do território para mobilizar a comunidade local.
+              </p>
+
+              <div class="form-group">
+                <label class="form-label" for="select-mutirao-existente">Selecione o Mutirão Existente *</label>
+                <select id="select-mutirao-existente" class="form-select">
+                  <option value="Mutirão da Horta Comunitária">Mutirão da Horta Comunitária (Sábado, 09:00)</option>
+                  <option value="Mutirão Limpeza do Rio Sarapuí">Mutirão Limpeza do Rio Sarapuí (Domingo, 08:30)</option>
+                  <option value="Mutirão Plantio de Mudas">Mutirão Plantio de Mudas (15/09, 14:00)</option>
+                  <option value="Mutirão Pintura do Centro Comunitário">Mutirão Pintura do Centro Comunitário (22/09, 09:00)</option>
+                </select>
+                <span class="form-helper-text">O mutirão selecionado será fixado na localização do mapa.</span>
+              </div>
+            </div>
+
+            <!-- 3. ABA MEMÓRIA -->
+            <div class="tab-panel" id="tab-content-memoria" style="display: none;">
+              <p class="tab-description-text" id="memory-tab-description">
+                Esta memória fica ligada a uma missão ou a um marcador.
+              </p>
+
+              <div class="form-group">
+                <label class="form-label">Foto da Memória *</label>
+                <div class="dropzone-box" id="dropzone-memoria">
+                  <input type="file" id="input-foto-memoria" accept="image/*" class="file-input-hidden" />
+                  <div class="dropzone-prompt" id="dropzone-prompt">
+                    <span class="dropzone-icon">
+                      <span class="ds-icon" style="width: 32px; height: 32px">
+                        <img src="/mapa/icons/camera.svg" alt="" width="32" height="32" />
+                      </span>
+                    </span>
+                    <span class="dropzone-text">Clique ou arraste uma imagem aqui</span>
+                    <span class="dropzone-subtext">Formatos aceitos: JPG, PNG, WebP</span>
+                  </div>
+                  <div class="dropzone-preview hidden" id="dropzone-preview">
+                    <img id="img-preview-memoria" src="" alt="Pré-visualização da memória" />
+                    <button type="button" class="btn-remove-photo" id="btn-remove-photo">Remover foto</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-titulo-memoria">Título ou Legenda da Memória *</label>
+                <input
+                  type="text"
+                  id="input-titulo-memoria"
+                  class="form-input"
+                  placeholder="Ex: Mutirão de plantio de árvores em 2024"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-data-memoria">Data do Registro</label>
+                <input type="date" id="input-data-memoria" class="form-input" value="2026-08-25" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="select-vinculo-memoria">Ligada a</label>
+                <select id="select-vinculo-memoria" class="form-select" required>
+                  <option value="Recuperação da nascente Sarapuí">Recuperação da nascente Sarapuí</option>
+                  <option value="Horta Comunitária Urbana">Horta Comunitária Urbana</option>
+                  <option value="Ponto de Descarte Irregular">Ponto de Descarte Irregular</option>
+                </select>
+                <span class="form-helper-text" id="memory-vinculo-helper">Escolha a missão ou o marcador ligado a esta memória.</span>
+              </div>
+            </div>
+
+            <!-- 4. ABA MARCADOR -->
+            <div class="tab-panel" id="tab-content-marcador" style="display: none;">
+              <p class="tab-description-text">
+                Adicione um ponto no mapa para alertar a comunidade ou destacar um local de interesse territorial.
+              </p>
+
+              <div class="form-group">
+                <label class="form-label">Tipo de Marcador *</label>
+                <div class="marcador-type-selector">
+                  <label class="marcador-option active" id="option-tipo-alerta">
+                    <input type="radio" name="tipo-marcador" value="alerta" checked class="radio-hidden" />
+                    <div class="marcador-option-content">
+                      <span class="marcador-icon">
+                        <span class="ds-icon" style="width: 22px; height: 22px">
+                          <img src="/mapa/icons/map-pin.svg" alt="" width="22" height="22" />
+                        </span>
+                      </span>
+                      <div>
+                        <strong>Alerta Comunitário</strong>
+                        <small>Descarte de lixo, risco, alagamento ou manutenção</small>
+                      </div>
+                    </div>
+                  </label>
+                  <label class="marcador-option" id="option-tipo-interesse">
+                    <input type="radio" name="tipo-marcador" value="interesse" class="radio-hidden" />
+                    <div class="marcador-option-content">
+                      <span class="marcador-icon">
+                        <span class="ds-icon" style="width: 22px; height: 22px">
+                          <img src="/mapa/icons/map-pin.svg" alt="" width="22" height="22" />
+                        </span>
+                      </span>
+                      <div>
+                        <strong>Ponto de Interesse</strong>
+                        <small>Nascente, equipamento comunitário, sede ou referência</small>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-titulo-marcador">Título do Marcador *</label>
+                <input
+                  type="text"
+                  id="input-titulo-marcador"
+                  class="form-input"
+                  placeholder="Ex: Descarte irregular na curva do córrego"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="select-categoria-marcador">Categoria / Severidade</label>
+                <select id="select-categoria-marcador" class="form-select">
+                  <option value="Alagamento / Risco">Alagamento / Água parada</option>
+                  <option value="Lixo / Entulho">Descarte Irregular de Entulho</option>
+                  <option value="Esgoto / Saneamento">Saneamento / Vazamento</option>
+                  <option value="Equipamento Social">Equipamento Comunitário</option>
+                  <option value="Nascente / Natureza">Nascente / Ponto Verde</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="input-descricao-marcador">Observação / Detalhes</label>
+                <textarea
+                  id="input-descricao-marcador"
+                  class="form-textarea"
+                  rows="2"
+                  placeholder="Adicione detalhes para ajudar a comunidade a identificar a situação..."
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- 5. ABA TOTEM (Fase 1.2 / 1.4 — Figital) — 3 etapas -->
+            <div class="tab-panel" id="tab-content-totem" style="display: none;">
+              <p class="tab-description-text">
+                Este ponto fica na trilha ou área escolhida. Serve para marcar o início, o fim ou um ponto específico do caminho, com uma descrição do local.
+              </p>
+
+              <div class="form-group">
+                <label class="form-label" for="input-nome-totem">Nome do totem</label>
+                <input type="text" id="input-nome-totem" class="form-input" placeholder="Ex: Porta da trilha" maxlength="80" />
+                <span class="form-error hidden" id="totem-nome-error">Dê um nome a este totem.</span>
+              </div>
+
+              <fieldset class="totem-papel-fieldset">
+                <legend class="form-label" id="totem-papel-label">Tipo do ponto</legend>
+                <div class="totem-papel-selector" role="radiogroup" aria-labelledby="totem-papel-label">
+                  <label class="totem-papel-option">
+                    <input type="radio" name="papel-totem" value="inicio" />
+                    <span class="totem-papel-option-body">
+                      <strong>Início</strong>
+                      <small>Marca o começo da trilha. Só um por percurso.</small>
+                    </span>
+                  </label>
+                  <label class="totem-papel-option">
+                    <input type="radio" name="papel-totem" value="intermediario" />
+                    <span class="totem-papel-option-body">
+                      <strong>Ponto específico</strong>
+                      <small>Um lugar de interesse ao longo do caminho.</small>
+                    </span>
+                  </label>
+                  <label class="totem-papel-option">
+                    <input type="radio" name="papel-totem" value="fim" />
+                    <span class="totem-papel-option-body">
+                      <strong>Fim</strong>
+                      <small>Marca o final da trilha.</small>
+                    </span>
+                  </label>
+                </div>
+                <span class="form-helper-text" id="totem-papel-helper">Todo percurso precisa de um totem de início.</span>
+              </fieldset>
+
+              <div class="form-group">
+                <label class="form-label" for="input-descricao-totem">Descrição / curiosidades do ponto</label>
+                <textarea id="input-descricao-totem" class="form-textarea" rows="3" placeholder="Conte o que há de interessante neste lugar da trilha."></textarea>
+              </div>
+
+              <label class="switch-field">
+                <span class="switch-field-label">Tem personagem que fala? (NPC)</span>
+                <span class="switch">
+                  <input type="checkbox" id="toggle-npc-totem" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </span>
+              </label>
+
+              <div id="totem-npc-section" hidden>
+                <div class="form-group">
+                  <label class="form-label" for="input-npc-nome">Nome de quem fala</label>
+                  <input type="text" id="input-npc-nome" class="form-input" placeholder="Ex: Guardiã da Serra" value="Guardiã do território" />
+                </div>
+
+                <div class="form-group">
+                  <div class="percurso-totens-header">
+                    <label class="form-label" id="totem-falas-label">O que essa pessoa diz</label>
+                    <button type="button" class="btn-link-add" id="btn-add-fala">Adicionar fala</button>
+                  </div>
+                  <div id="totem-npc-falas" class="totem-npc-falas" role="group" aria-labelledby="totem-falas-label"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="btn-cancel-modal">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              id="btn-submit-modal"
+              class="card-btn card-btn-primary"
+              style="width: auto; padding: 10px 20px"
+            >
+              Criar Missão
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Script Principal da Aplicação -->
+    <script type="module" src="/src/mapa/app.js"></script>
+  </body>
+</html>

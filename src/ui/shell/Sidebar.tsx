@@ -8,10 +8,11 @@ interface Props {
 }
 
 // Mesmos itens da sidebar do mapa (Territorio-map/poc/client/index.html, #sidebar).
-// No mobile vira drawer. Nesta visualização nenhum deles navega ainda: "Em breve".
-const ITENS: { rotulo: string; icone: NomeIcone }[] = [
+// No mobile vira drawer. "Mapa" navega para a página do mapa (autoria + QR);
+// os demais ainda são "Em breve" nesta visualização.
+const ITENS: { rotulo: string; icone: NomeIcone; href?: string }[] = [
   { rotulo: 'Home', icone: 'home' },
-  { rotulo: 'Mapa', icone: 'map' },
+  { rotulo: 'Mapa', icone: 'map', href: '/mapa.html' },
   { rotulo: 'Manual', icone: 'book' },
   { rotulo: 'Mutirões', icone: 'users' },
   { rotulo: 'Comunidades', icone: 'grid' },
@@ -48,20 +49,29 @@ export default function Sidebar({ aberta, onFechar }: Props) {
           </button>
         </div>
         <ul className="nav-menu">
-          {ITENS.map((item) => (
-            <li key={item.rotulo} className="nav-item">
-              <button
-                type="button"
-                onClick={() => {
-                  onFechar();
-                  avisar(`${item.rotulo}: em breve nesta visualização.`);
-                }}
-              >
-                <Icone nome={item.icone} tamanho={20} className="nav-icon" />
-                <span>{item.rotulo}</span>
-              </button>
-            </li>
-          ))}
+          {ITENS.map((item) =>
+            item.href ? (
+              <li key={item.rotulo} className="nav-item">
+                <a href={item.href} onClick={onFechar}>
+                  <Icone nome={item.icone} tamanho={20} className="nav-icon" />
+                  <span>{item.rotulo}</span>
+                </a>
+              </li>
+            ) : (
+              <li key={item.rotulo} className="nav-item">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onFechar();
+                    avisar(`${item.rotulo}: em breve nesta visualização.`);
+                  }}
+                >
+                  <Icone nome={item.icone} tamanho={20} className="nav-icon" />
+                  <span>{item.rotulo}</span>
+                </button>
+              </li>
+            )
+          )}
         </ul>
       </aside>
     </>

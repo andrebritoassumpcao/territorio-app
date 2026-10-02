@@ -1,8 +1,6 @@
 import { useAcervo } from '../../store/useAcervo';
 import { useFluxo } from '../../ui/fluxo';
 import Icone from '../../ui/Icone';
-import { STATS_JORNADA } from '../../data/perfil';
-import Taina from '../npc/Taina';
 import PerfilHeader from './PerfilHeader';
 import { CATEGORIA_ICONE, CATEGORIA_ROTULO, PAPEL_ROTULO } from './rotulos';
 
@@ -25,27 +23,13 @@ export default function MinhaJornada() {
 
       <PerfilHeader />
 
-      <ul className="jornada-stats" aria-label="Resumo da jornada">
-        {STATS_JORNADA.map((s) => (
-          <li key={s.id} className="profile-stat jornada-stat">
-            <span className="profile-icon-tile">
-              <img src={s.icone} alt="" width={22} height={22} />
-            </span>
-            <span className="profile-stat-copy">
-              <span className="profile-stat-label">{s.rotulo}</span>
-              <span className="profile-stat-value">{s.valor}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-
       {/* Entrada real é a câmera nativa (deep link); "Simular leitura" é o plano B da demo. */}
-      <div className="dica-scan">
+      <div className="dica-scan" data-tour="scan">
         <span className="dica-scan__avatar" aria-hidden="true">
-          <Taina expressao="acenando" enquadramento="rosto" />
+          <Icone nome="qr-code" tamanho={28} />
         </span>
         <p className="dica-scan__texto">
-          <strong>Tainá:</strong> Achou um QR de missão ou totem? Aponte a câmera do celular que eu te explico tudo!
+          Achou um QR de missão ou totem? Aponte a câmera do celular para começar a jornada.
         </p>
         <button type="button" className="botao-texto" onClick={fluxo.abrirScan}>
           Simular leitura
@@ -59,8 +43,8 @@ export default function MinhaJornada() {
           <span className="secao__contagem">{abertas.length} por fazer</span>
         </div>
         <ul className="cards">
-          {abertas.map((m) => (
-            <li key={m.id}>
+          {abertas.map((m, i) => (
+            <li key={m.id} data-tour={i === 0 ? 'missao' : undefined}>
               <button type="button" className="card card--missao" onClick={() => fluxo.abrirMissao(m.id)}>
                 <span className="card__icone card__icone--missao">
                   <Icone nome={CATEGORIA_ICONE[m.categoria]} />
@@ -102,7 +86,7 @@ export default function MinhaJornada() {
       </section>
 
       {/* Insígnias */}
-      <section className="secao">
+      <section className="secao" data-tour="insignias">
         <div className="secao__cabecalho">
           <h2 className="secao__titulo"><Icone nome="star" tamanho={18} /> Insígnias</h2>
         </div>
@@ -117,7 +101,7 @@ export default function MinhaJornada() {
       </section>
 
       {/* Memórias */}
-      <section className="secao">
+      <section className="secao" data-tour="memorias">
         <div className="secao__cabecalho">
           <h2 className="secao__titulo"><Icone nome="camera" tamanho={18} /> Memórias</h2>
           <span className="secao__contagem">{memorias.length}</span>

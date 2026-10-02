@@ -9,6 +9,8 @@ import QrsDemo from './features/qrs/QrsDemo';
 // Visualização mobile do Território: a página "Minha jornada" dentro da moldura
 // do sistema (top bar + sidebar + menu de perfil), fluxos em bottom-sheets e
 // deep link de missão/totem (/m/{mapa}/missao/{id}) vindo do QR. /qrs apoia a demo.
+// O tour de onboarding (primeiro acesso) é disparado dentro do FluxoProvider
+// (ver features/tutorial/TutorialTour), pois precisa do controlador do fluxo.
 export default function App() {
   return (
     <RotaProvider>

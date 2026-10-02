@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useAcervo } from '../../store/useAcervo';
-import { STATS_JORNADA } from '../../data/perfil';
 import Icone from '../Icone';
 import { useAviso } from '../aviso';
 import { CAMINHO_JORNADA, useRota } from '../rota';
@@ -77,19 +76,6 @@ export default function PerfilMenu({ onFechar }: Props) {
 
         <div className="profile-menu-block">
           <h3 className="profile-menu-heading">Minha jornada</h3>
-          <ul className="profile-stats">
-            {STATS_JORNADA.map((s) => (
-              <li key={s.id} className="profile-stat">
-                <span className="profile-icon-tile">
-                  <img src={s.icone} alt="" width={22} height={22} />
-                </span>
-                <span className="profile-stat-copy">
-                  <span className="profile-stat-label">{s.rotulo}</span>
-                  <span className="profile-stat-value">{s.valor}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
           <button type="button" className="profile-menu-link profile-menu-link--destaque" role="menuitem" onClick={() => ir(CAMINHO_JORNADA)}>
             <span className="profile-icon-tile"><Icone nome="trophy" tamanho={20} /></span>
             <span>Ver minha jornada</span>

@@ -2,8 +2,8 @@
 
 **Plataforma:** Território (territorio.ai)
 **Produto:** visualização mobile do sistema Território, com a página "Minha jornada" do perfil (participante da campanha Figital)
-**Versão deste documento:** 0.5
-**Data:** 28/09/2026
+**Versão deste documento:** 0.6
+**Data:** 30/09/2026
 **Fonte de verdade do app como está hoje:** este arquivo
 
 > Sempre que uma funcionalidade for adicionada, alterada ou removida, este documento deve ser atualizado na mesma entrega. Ver `.cursor/rules/atualizar-documentacao-atual.mdc`.
@@ -12,11 +12,14 @@
 
 ## 1. O que é hoje
 
-**Protótipo de apresentação**: não é mais um "app" (PWA) — é uma **visualização mobile do sistema Território**, com o mesmo design system do mapa, a mesma **top bar**, a **sidebar** (em drawer) e o **menu de perfil**. Todo o conteúdo de missões vive na página **"Minha jornada"** do perfil. **100% mockado (sem backend)**, em **TypeScript**; estado no navegador (`localStorage`). Publicado no **Vercel** para a apresentação.
+**Protótipo de apresentação**, agora um **site único "Território"** com **duas páginas** no mesmo build/domínio (Vite multi-page):
 
-A ideia central da demo: o participante aponta a **câmera nativa do celular** para o QR de uma missão; o link abre esta página direto na missão (deep link).
+- **`index.html`** — a **visualização mobile do participante** (SPA React/TS): top bar, sidebar (drawer), menu de perfil e a página **"Minha jornada"**, onde vivem as missões. Estado no navegador (`localStorage`).
+- **`mapa.html`** — o **mapa colaborativo** do `Territorio-map` embutido como está (**JS vanilla + Leaflet**, desktop), para **autorar missões e gerar QR**. Ver `docs/MIGRACAO_MAPA.md`.
 
-> A integração real com a API Figital (manifesto/offline, envio ao painel, assinatura HMAC — Fases 2–5) segue **suspensa**. O contrato continua em `docs/CONTRATO_API_FIGITAL.md`.
+A ideia central da demo (handoff por QR, **só missões**): no mapa, o autor cria uma missão e gera o QR; um **segundo aparelho** lê o QR, abre o site e o app **recebe a missão e roda o fluxo** (cena de fala → executar → enviar → recompensa). A missão trafega por uma tabela **`missoes` no Supabase** (o QR carrega só o ID). Deixou de ser "100% mockado": **missões persistem no Supabase** (projeto leve, reutilizado do mapa); o resto do acervo do participante segue em `localStorage`.
+
+> As demais Fases da API Figital (manifesto/offline, painel, assinatura HMAC) seguem **suspensas**; o contrato continua em `docs/CONTRATO_API_FIGITAL.md`. Sem figuras humanas (decisão do CEO): a personagem Tainá foi removida; a cena de fala mostra só a paisagem e o diálogo.
 
 ## 2. Como executar e publicar
 
@@ -59,7 +62,7 @@ src/
 │   └── Icone.tsx, Sheet.tsx
 └── features/
     ├── jornada/              # MinhaJornada.tsx (a página), PerfilHeader.tsx, rotulos.ts
-    ├── npc/                  # Taina.tsx (personagem SVG), Cenario.tsx (paisagens), CenaNpc.tsx (diálogo), OuvirNpc.tsx
+    ├── npc/                  # Cenario.tsx (paisagens), CenaNpc.tsx (cena de fala, sem figura), OuvirNpc.tsx
     ├── qrs/QrsDemo.tsx        # página /qrs (QRs de demonstração)
     ├── scan/ScanSheet.tsx     # scan simulado (plano B da demo)
     ├── missao/               # MissaoSheet.tsx (executar/enviar), RecompensaSheet.tsx
@@ -73,9 +76,10 @@ src/
 |---------|--------------|
 | `/` ou qualquer caminho desconhecido | Redireciona para `/jornada` |
 | `/jornada` | Página Minha jornada dentro do shell |
-| `/m/{mapaId}/missao/{missaoId}` | **Cena da Tainá** e depois o sheet da missão, sobre Minha jornada |
-| `/m/{mapaId}/t/{totemId}` | **Cena da Tainá** e depois o sheet do totem, sobre Minha jornada |
+| `/m/{mapaId}/missao/{missaoId}` | **Cena de fala** e depois o sheet da missão, sobre Minha jornada. Com Supabase ligado, a missão é **sempre rebuscada** por ID e injetada/atualizada no acervo (traz edições feitas no mapa, preservando o progresso local); missão-semente sem linha no Supabase abre a versão local |
+| `/m/{mapaId}/t/{totemId}` | **Cena de fala** e depois o sheet do totem, sobre Minha jornada |
 | `/qrs` | QRs de demonstração (rota "escondida") |
+| `/mapa` (`/mapa.html`) | **Mapa colaborativo** (autoria de missão + geração de QR); página vanilla + Leaflet, fora do SPA |
 
 O padrão `/m/...` é o mesmo da URL profunda do mapa (§14.1, `gerarUrlQrMissao`/`gerarUrlQr` em `Territorio-map/poc/client/src/figital/model.js`). O `?s=` (assinatura, RN-FIG-016) é **ignorado** no protótipo. O `mapaId` também é ignorado: a busca é pelo id da missão/totem no store.
 
@@ -84,36 +88,49 @@ O padrão `/m/...` é o mesmo da URL profunda do mapa (§14.1, `gerarUrlQrMissao
 ## 5. Shell do sistema (top bar, sidebar, perfil)
 
 - **Top bar** (do mapa): botão da sidebar, busca (**Em breve**), notificações (**Em breve**), avatar que abre o menu de perfil.
-- **Sidebar** (drawer): logo + Home, Mapa, Manual, Mutirões, Comunidades, Blog — todos mostram toast "Em breve" (só Minha jornada funciona nesta visualização).
-- **Menu de perfil** (igual ao do mapa): identidade (Amanda Waller, nível, XP vivo), Minha rede (**Em breve**), Organizações (vazio, **Em breve**), bloco **Minha jornada** com os 4 stats + "Ver minha jornada", Sair (**Em breve**). Só no protótipo, um bloco **Demonstração**: "QRs de demonstração" (→ `/qrs`) e "Reiniciar demo".
+- **Sidebar** (drawer): logo + Home, Mapa, Manual, Mutirões, Comunidades, Blog. **Mapa** navega para `/mapa.html` (autoria + QR); os demais mostram toast "Em breve".
+- **Menu de perfil** (igual ao do mapa): identidade (Amanda Waller, nível, XP vivo), Minha rede (**Em breve**), Organizações (vazio, **Em breve**), bloco **Minha jornada** só com "Ver minha jornada", Sair (**Em breve**). Os 4 stats estáticos (Saberes/Certificados/Horas/Manuais) foram **removidos** daqui e da página — não faziam sentido para o participante. Só no protótipo, um bloco **Demonstração**: "QRs de demonstração" (→ `/qrs`) e "Reiniciar demo".
+
+## 5.1 Tutorial de onboarding (tour guiado com spotlight)
+
+No **primeiro acesso**, roda **uma vez** um **tour guiado** (biblioteca **driver.js**): a tela escurece e um recorte iluminado destaca cada passo, com balão que avança no **"Próximo"** (o alvo fica **não clicável** — `disableActiveInteraction` — para não disparar ações por acidente). Sequência (6 passos): **dica de scan** → **missões** → **memórias** → **abre a 1ª missão** (o próprio tour abre o sheet, sem a cena) → **Registrar** (auto-registra os obrigatórios para habilitar) → **Enviar** (destacado). Ao concluir, **fecha o sheet sem enviar** — não conclui a missão nem mexe no XP.
+
+Se o participante entra por **deep link de missão**, a **cena do NPC é adiada**: o tour roda primeiro e, ao terminar, a cena da missão real abre. Flag `tutorialVisto` no store (**"Reiniciar demo" reexibe**). Peças: `src/features/tutorial/tour.ts` (`iniciarTourGuiado`) + `src/features/tutorial/TutorialTour.tsx` (disparo, dentro do `FluxoProvider`); o `fluxo.tsx` expõe o controlador (abrir sheet direto, registrar, fim) e faz o adiamento; âncoras `data-tour="…"` em `MinhaJornada.tsx` e `MissaoSheet.tsx`.
 
 ## 6. A página Minha jornada
 
 - Título "Minha jornada".
 - **Perfil:** Amanda Waller, Bacia do Rio Sarapuí, **Nível 12**, barra de XP (2450/3000), contadores de missões e insígnias (vivos).
-- **Stats** do mapa (Saberes 12, Certificados 3, Horas 48, Manuais 48) — **estáticos**, iguais ao mapa (`STATS_JORNADA` em `src/data/perfil.ts`).
-- **Dica de scan:** rosto da Tainá + "Achou um QR de missão ou totem? Aponte a câmera do celular…" + link discreto **"Simular leitura"** (abre a lista de QRs mock — plano B se a câmera/rede falhar).
+- **Dica de scan:** ícone de QR + "Achou um QR de missão ou totem? Aponte a câmera do celular…" + link discreto **"Simular leitura"** (abre a lista de QRs mock — plano B se a câmera/rede falhar).
 - **Seções:** Missões (por fazer), Totens do território, Insígnias, Memórias, Concluídas (aparece após concluir alguma). Cada memória mostra de onde veio num chip: **Missão · …** (verde) ou **Totem · …** (dourado).
 
-## 7. NPC — Tainá e a cena de diálogo
+## 7. NPC — a cena de fala (sem figura humana)
 
-Uma única personagem guia todos os pontos: **Tainá, Guardiã do Território** — jovem negra de black power, lenço de chita, argolas douradas, colete verde do Território e bolsa de sementes. Arte **vetorial (SVG) desenhada no código**, estilo flat de jogo mobile; ficha, paleta e **prompt kit** para gerar uma versão ilustrada em IA de imagem em `docs/NPC_TAINA.md` (troca por PNG mudando `ARTE` em `Taina.tsx`).
+**Sem figuras humanas (decisão do CEO):** a personagem Tainá foi **removida** (arquivo `Taina.tsx` excluído; `docs/NPC_TAINA.md` descontinuado). A "voz" que narra é só um **rótulo de roteiro** (`Guia do Território` na semente, ou o nome que o autor digitar no mapa), sem personagem ilustrada. Os avatares de perfil (foto e mini-avatares) foram mantidos.
 
-**Roteiro:** cada missão e totem tem um NPC com falas `{ id, texto }` (formato do §14.2; roteiro fixo, RN-FIG-047). Missões: `intro` → `missao` → `dica`, e `ok` (dita na recompensa). Totens: `intro` → `historia` → `convite`. A **expressão** sai do `id`: `intro` = acenando, `ok` = comemorando, demais = explicando — sem mudar o contrato.
+**Roteiro:** cada missão e totem tem um NPC com falas `{ id, texto }` (formato do §14.2; roteiro fixo, RN-FIG-047). Missões: `intro` → `missao` → `dica`, e `ok` (dita na recompensa). Totens: `intro` → `historia` → `convite`. Como não há figura, o `id` **não** escolhe mais expressão — é só a ordem das falas.
 
-**Cena (tela cheia):** paisagem ilustrada do lugar (`cenario` do ponto: `rio`, `serra` ou `horta`), Tainá grande ao centro, caixa de diálogo com etiqueta de nome (verde na missão, dourada no totem). O texto aparece letra a letra; **toque** em qualquer lugar completa o texto e, no toque seguinte, avança um cartão. Bolinhas de progresso, "Toque para continuar", botão **Pular** no topo e, na última fala, o CTA (**Começar missão** / **Explorar o ponto**). Teclado: Enter/Espaço/→ avançam, Esc pula. Vibração curta a cada avanço (Android). Tainá respira, pisca, acena, mexe a boca enquanto "fala"; tudo desligado com *reduzir movimento*. Sem som.
+**Cena (tela cheia):** paisagem ilustrada do lugar (`cenario` do ponto: `rio`, `serra` ou `horta`) e a caixa de diálogo (empurrada para a base, `margin-top: auto`) com etiqueta de nome (verde na missão, dourada no totem) — **sem figura**. O texto aparece letra a letra; **toque** em qualquer lugar completa o texto e, no toque seguinte, avança um cartão. Bolinhas de progresso, "Toque para continuar", botão **Pular** no topo e, na última fala, o CTA (**Começar missão** / **Explorar o ponto**). Teclado: Enter/Espaço/→ avançam, Esc pula. Vibração curta a cada avanço (Android). Cursor piscando enquanto "digita"; desligado com *reduzir movimento*. Sem som.
 
-**Quando a cena toca:** QR (câmera ou "Simular leitura") **sempre**; toque no card **só na primeira vez** daquele ponto (`npcVistos` no store, zerado por "Reiniciar demo"); missão concluída **não** toca. Nos sheets, o botão **"Tainá · Ouvir de novo"** reabre a cena. Na **recompensa**, a Tainá comemorando diz a fala `ok`.
+**Quando a cena toca:** QR (câmera ou "Simular leitura") **sempre**; toque no card **só na primeira vez** daquele ponto (`npcVistos` no store, zerado por "Reiniciar demo"); missão concluída **não** toca. Nos sheets, o botão **"Ouvir de novo"** reabre a cena. Na **recompensa**, a fala `ok` é exibida como texto.
 
 ## 8. Fluxo de missão (cada missão tem seu QR)
 
-Câmera do celular lê o QR (ou "Simular leitura", ou toque no card) → **cena da Tainá** (§7) → **executar**: registrar cada insumo pedido ("o que coletar", mock) → **enviar** (habilita só com os obrigatórios registrados, RN-FIG-020) → **recompensa**: revela a Insígnia + XP. A Tainá comemora com a fala `ok`, e um botão secundário **"Deixar uma memória deste momento"** abre o formulário já ligado à missão. Ao fechar: a missão vai para **Concluídas**, a Insígnia entra na coleção e a barra de XP sobe (com rollover de nível).
+Câmera do celular lê o QR (ou "Simular leitura", ou toque no card) → **cena de fala** (§7) → **executar**: registrar cada insumo pedido ("o que coletar", mock) → **enviar** (habilita só com os obrigatórios registrados, RN-FIG-020) → **recompensa**: revela a Insígnia + XP. A fala `ok` aparece como texto, e um botão secundário **"Deixar uma memória deste momento"** abre o formulário já ligado à missão. Ao fechar: a missão vai para **Concluídas**, a Insígnia entra na coleção e a barra de XP sobe (com rollover de nível).
 
 **Memórias da missão (RN-MEM-004):** o sheet da missão tem a seção **"Memórias desta missão"** (lista das memórias ligadas a ela) e o botão **"Adicionar memória"**, disponível a qualquer momento (aberta ou concluída), quantas vezes quiser. É livre: **não conta** para "O que coletar" nem para liberar o envio. O formulário mostra o vínculo travado ("Na missão …"), como no mapa, e a data é a do dia. Ao salvar — ou cancelar — volta para a mesma missão com os itens já registrados intactos (os registros vivem no `fluxo.tsx` enquanto o fluxo está aberto) e o aviso "Memória guardada na missão.". A semente já traz uma memória na **Horta Comunitária** para a lista não nascer vazia.
 
+## 8.1 Formulário (um insumo da missão)
+
+"Responder formulário" é **um insumo** (`tipo: 'formulario'`) na lista "O que coletar", ao lado de "Tirar foto…". O admin monta as perguntas no mapa (editor dentro do insumo): cada pergunta é **múltipla escolha (a/b/c/d)** ou **resposta escrita**, com toggle **obrigatória/opcional**. Se não quiser formulário, não adiciona o insumo. O flag **obrigatório** do insumo decide se concluir o formulário é necessário para liberar "Enviar".
+
+No app, o insumo mostra o botão **"Responder"**, que abre o formulário em **steps** (`src/features/formulario/FormularioSheet.tsx`): uma pergunta por tela, barra "Pergunta X de N", **Voltar/Próximo**; obrigatória trava o Próximo, opcional vira **"Pular"**; a última é **"Concluir"**. Ao concluir, marca a tarefa como feita (como registrar um insumo) e **grava as respostas no Supabase** (`src/data/respostas.ts`, tabela `respostas`) — participante **anônimo grava**; **só o admin logado lê** (RLS). É enquete (sem resposta certa); respostas gravam texto legível (`"b) alternativa"` / o texto aberto) + autor + data.
+
+No mapa, o popup da missão ganha a aba **"Respostas (N)"** — visível **só logado** — que busca e lista cada envio (`src/mapa/app.js`: `buildParentCardHtml`/`switchCardTab`/`carregarRespostas`). Sem Supabase/sem login, a aba não traz dados.
+
 ## 9. Fluxo de totem (informacional)
 
-QR do totem (câmera, simulação ou card) → **cena da Tainá** (§7) → **totem**: curiosidade do ponto + "Ouvir de novo" + memórias já deixadas ali → **deixar memória**: foto opcional + comentário, vínculo "No ponto …" → salva na jornada (aparece no topo de Memórias) e fecha, com o aviso "Memória guardada no ponto.".
+QR do totem (câmera, simulação ou card) → **cena de fala** (§7) → **totem**: curiosidade do ponto + "Ouvir de novo" + memórias já deixadas ali → **deixar memória**: foto opcional + comentário, vínculo "No ponto …" → salva na jornada (aparece no topo de Memórias) e fecha, com o aviso "Memória guardada no ponto.".
 
 ## 10. QRs de demonstração (`/qrs`)
 

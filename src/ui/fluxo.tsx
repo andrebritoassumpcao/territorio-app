@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { QrMock, VinculoMemoria } from '../types';
+import type { Insumo, QrMock, RespostaItem, VinculoMemoria } from '../types';
 import { useAcervo } from '../store/useAcervo';
+import { buscarMissao } from '../data/missoesRemotas';
+import { dbEnabled } from '../data/supabase';
+import { enviarRespostas } from '../data/respostas';
 import { useAviso } from './aviso';
 import { CAMINHO_JORNADA, useRota } from './rota';
 import ScanSheet from '../features/scan/ScanSheet';
@@ -9,6 +12,8 @@ import RecompensaSheet from '../features/missao/RecompensaSheet';
 import TotemSheet from '../features/totem/TotemSheet';
 import MemoriaForm from '../features/memoria/MemoriaForm';
 import CenaNpc from '../features/npc/CenaNpc';
+import FormularioSheet from '../features/formulario/FormularioSheet';
+import TutorialTour from '../features/tutorial/TutorialTour';
 
 // Orquestra o que abre sobre Minha jornada — um de cada vez:
 //   scan → [cena do NPC] → missão ⇄ memória → recompensa (→ memória);   [cena do NPC] → totem → memória.
@@ -18,6 +23,7 @@ type Estado =
   | { tipo: 'scan' }
   | { tipo: 'npc'; alvo: Alvo; id: string }
   | { tipo: 'missao'; missaoId: string }
+  | { tipo: 'formulario'; missaoId: string; insumo: Insumo }
   | { tipo: 'recompensa'; missaoId: string; recompensa: string; xp: number }
   | { tipo: 'totem'; totemId: string }
   | { tipo: 'memoria'; vinculo: VinculoMemoria };
@@ -43,8 +49,18 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
     setRegistros({});
   };
   const { rota, navegar } = useRota();
-  const { missoes, totens, npcVistos, marcarNpcVisto } = useAcervo();
+  const { perfil, missoes, totens, npcVistos, marcarNpcVisto, adicionarMissao, tutorialVisto, marcarTutorialVisto } = useAcervo();
   const avisar = useAviso();
+  // Missão buscada no Supabase (autorada no mapa) esperando entrar no store para abrir.
+  const [missaoPendente, setMissaoPendente] = useState<string | null>(null);
+  // Deep link no primeiro acesso: a cena espera o tour de onboarding terminar.
+  const [alvoPosTour, setAlvoPosTour] = useState<{ alvo: Alvo; id: string } | null>(null);
+
+  // Abre o ponto; mas no primeiro acesso adia para depois do tour (ver TutorialTour/aoFimDoTour).
+  function entrar(alvo: Alvo, id: string) {
+    if (!tutorialVisto) setAlvoPosTour({ alvo, id });
+    else abrir(alvo, id, 'qr');
+  }
 
   function falasDaCena(alvo: Alvo, id: string) {
     const npc = alvo === 'missao' ? missoes.find((m) => m.id === id)?.npc : totens.find((t) => t.id === id)?.roteiroNpc;
@@ -70,18 +86,46 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
   // Deep link (QR lido pela câmera nativa): /m/{mapa}/missao/{id} ou /m/{mapa}/t/{id}
   // abre a cena do NPC (e depois o sheet) sobre Minha jornada. A URL volta para
   // /jornada na hora, para que fechar/recarregar não reabra. ID desconhecido → aviso.
+  // Missão não encontrada no store local é buscada no Supabase (autorada no mapa,
+  // handoff por QR): ao chegar, entra no acervo e abre pelo efeito de `missaoPendente`.
   useEffect(() => {
     if (rota.tipo === 'missao') {
-      if (missoes.some((m) => m.id === rota.id)) abrir('missao', rota.id, 'qr');
-      else avisar('Missão não encontrada neste protótipo.');
+      const id = rota.id;
+      const local = missoes.some((m) => m.id === id);
+      if (dbEnabled) {
+        // Sempre rebusca a versão mais recente do mapa (traz edições), mesmo com cópia local.
+        if (!local) avisar('Carregando missão…');
+        buscarMissao(id).then((m) => {
+          if (m) {
+            adicionarMissao(m);
+            setMissaoPendente(id);
+          } else if (local) {
+            entrar('missao', id); // missão-semente (não vive no Supabase)
+          } else {
+            avisar('Missão não encontrada neste protótipo.');
+          }
+        });
+      } else if (local) {
+        entrar('missao', id);
+      } else {
+        avisar('Missão não encontrada neste protótipo.');
+      }
       navegar(CAMINHO_JORNADA, { substituir: true });
     } else if (rota.tipo === 'totem') {
-      if (totens.some((t) => t.id === rota.id)) abrir('totem', rota.id, 'qr');
+      if (totens.some((t) => t.id === rota.id)) entrar('totem', rota.id);
       else avisar('Totem não encontrado neste protótipo.');
       navegar(CAMINHO_JORNADA, { substituir: true });
     }
     // Reage só à mudança de rota; o estado do acervo é lido no momento do deep link.
   }, [rota]);
+
+  // Quando a missão buscada no Supabase entra no acervo, abre o fluxo (ou adia p/ o tour).
+  useEffect(() => {
+    if (missaoPendente && missoes.some((m) => m.id === missaoPendente)) {
+      entrar('missao', missaoPendente);
+      setMissaoPendente(null);
+    }
+  }, [missaoPendente, missoes]);
 
   const fluxo: Fluxo = {
     abrirScan: () => setEstado({ tipo: 'scan' }),
@@ -126,9 +170,32 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Controlador do tour de onboarding (ver features/tutorial): abre o sheet direto
+  // (sem cena), registra insumos (mock) e, ao fim, fecha o sheet, marca visto e abre
+  // a missão que ficou adiada pelo deep link no primeiro acesso.
+  const abrirSheetDireto = (id: string) => setEstado({ tipo: 'missao', missaoId: id });
+  const registrarTour = (missaoId: string, insumoId: string) =>
+    setRegistros((r) => ({ ...r, [missaoId]: [...(r[missaoId] ?? []), insumoId] }));
+  const aoFimDoTour = () => {
+    fechar();
+    marcarTutorialVisto();
+    if (alvoPosTour) {
+      const { alvo, id } = alvoPosTour;
+      setAlvoPosTour(null);
+      abrir(alvo, id, 'qr');
+    }
+  };
+
   return (
     <FluxoContext.Provider value={fluxo}>
       {children}
+
+      <TutorialTour
+        estadoLivre={estado.tipo === 'nenhum'}
+        abrirSheet={abrirSheetDireto}
+        registrar={registrarTour}
+        aoFim={aoFimDoTour}
+      />
 
       {estado.tipo === 'scan' && <ScanSheet onFechar={fechar} onSelecionar={aoSelecionarQr} />}
 
@@ -141,12 +208,28 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
           onRegistrar={(insumoId) =>
             setRegistros((r) => ({ ...r, [estado.missaoId]: [...(r[estado.missaoId] ?? []), insumoId] }))
           }
+          onResponderFormulario={(insumo) => setEstado({ tipo: 'formulario', missaoId: estado.missaoId, insumo })}
           onAdicionarMemoria={() => setEstado({ tipo: 'memoria', vinculo: { tipo: 'missao', id: estado.missaoId } })}
           onFechar={fechar}
           onOuvirNpc={() => setEstado({ tipo: 'npc', alvo: 'missao', id: estado.missaoId })}
           onConcluida={(r) => setEstado({ tipo: 'recompensa', missaoId: estado.missaoId, recompensa: r.recompensa, xp: r.xp })}
         />
       )}
+
+      {estado.tipo === 'formulario' && (() => {
+        const { missaoId, insumo } = estado;
+        const voltarAMissao = () => setEstado({ tipo: 'missao', missaoId });
+        const concluir = (itens: RespostaItem[]) => {
+          // Marca a tarefa (insumo) como feita e grava as respostas (best-effort).
+          setRegistros((r) => ({ ...r, [missaoId]: [...(r[missaoId] ?? []), insumo.id] }));
+          enviarRespostas(missaoId, { autor: perfil.nome, enviadoEm: new Date().toISOString(), itens }).then((res) => {
+            if (!res.ok && res.message) console.warn('[respostas]', res.message);
+          });
+          voltarAMissao();
+          avisar('Formulário respondido.');
+        };
+        return <FormularioSheet insumo={insumo} onConcluir={concluir} onFechar={voltarAMissao} />;
+      })()}
 
       {estado.tipo === 'recompensa' && (
         <RecompensaSheet
