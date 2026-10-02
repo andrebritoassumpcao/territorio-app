@@ -120,6 +120,14 @@ Câmera do celular lê o QR (ou "Simular leitura", ou toque no card) → **cena 
 
 **Memórias da missão (RN-MEM-004):** o sheet da missão tem a seção **"Memórias desta missão"** (lista das memórias ligadas a ela) e o botão **"Adicionar memória"**, disponível a qualquer momento (aberta ou concluída), quantas vezes quiser. É livre: **não conta** para "O que coletar" nem para liberar o envio. O formulário mostra o vínculo travado ("Na missão …"), como no mapa, e a data é a do dia. Ao salvar — ou cancelar — volta para a mesma missão com os itens já registrados intactos (os registros vivem no `fluxo.tsx` enquanto o fluxo está aberto) e o aviso "Memória guardada na missão.". A semente já traz uma memória na **Horta Comunitária** para a lista não nascer vazia.
 
+## 8.1 Formulário (um insumo da missão)
+
+"Responder formulário" é **um insumo** (`tipo: 'formulario'`) na lista "O que coletar", ao lado de "Tirar foto…". O admin monta as perguntas no mapa (editor dentro do insumo): cada pergunta é **múltipla escolha (a/b/c/d)** ou **resposta escrita**, com toggle **obrigatória/opcional**. Se não quiser formulário, não adiciona o insumo. O flag **obrigatório** do insumo decide se concluir o formulário é necessário para liberar "Enviar".
+
+No app, o insumo mostra o botão **"Responder"**, que abre o formulário em **steps** (`src/features/formulario/FormularioSheet.tsx`): uma pergunta por tela, barra "Pergunta X de N", **Voltar/Próximo**; obrigatória trava o Próximo, opcional vira **"Pular"**; a última é **"Concluir"**. Ao concluir, marca a tarefa como feita (como registrar um insumo) e **grava as respostas no Supabase** (`src/data/respostas.ts`, tabela `respostas`) — participante **anônimo grava**; **só o admin logado lê** (RLS). É enquete (sem resposta certa); respostas gravam texto legível (`"b) alternativa"` / o texto aberto) + autor + data.
+
+No mapa, o popup da missão ganha a aba **"Respostas (N)"** — visível **só logado** — que busca e lista cada envio (`src/mapa/app.js`: `buildParentCardHtml`/`switchCardTab`/`carregarRespostas`). Sem Supabase/sem login, a aba não traz dados.
+
 ## 9. Fluxo de totem (informacional)
 
 QR do totem (câmera, simulação ou card) → **cena de fala** (§7) → **totem**: curiosidade do ponto + "Ouvir de novo" + memórias já deixadas ali → **deixar memória**: foto opcional + comentário, vínculo "No ponto …" → salva na jornada (aparece no topo de Memórias) e fecha, com o aviso "Memória guardada no ponto.".

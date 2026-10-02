@@ -18,6 +18,28 @@ export interface Insumo {
   tipo: TipoInsumo;
   rotulo: string;
   obrigatorio: boolean;
+  /** Só quando tipo === 'formulario': as perguntas do formulário (enquete). */
+  perguntas?: Pergunta[];
+}
+
+/** Uma pergunta do formulário (insumo tipo 'formulario'). Enquete, sem resposta certa. */
+export interface Pergunta {
+  id: string;
+  enunciado: string;
+  /** 'multipla' = 4 opções a/b/c/d; 'aberta' = resposta escrita. */
+  tipo: 'multipla' | 'aberta';
+  /** 4 alternativas quando tipo === 'multipla'. */
+  opcoes?: string[];
+  obrigatoria: boolean;
+}
+
+/** Resposta de uma pergunta, registrada no app (enviada ao Supabase). */
+export interface RespostaItem {
+  perguntaId: string;
+  enunciado: string;
+  tipo: 'multipla' | 'aberta';
+  /** Texto legível: múltipla = "a) alternativa"; aberta = o texto; null se pulada. */
+  valor: string | null;
 }
 
 /**

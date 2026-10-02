@@ -18,7 +18,7 @@ import {
   gerarUrlQrMissao,
   gerarAssinaturaMock
 } from './figital/model.js';
-import { dbEnabled, loadSnapshot, saveSnapshot } from './db.js';
+import { dbEnabled, loadSnapshot, saveSnapshot, supabase } from './db.js';
 import { authEnabled, getSession, signIn, signOut } from './auth.js';
 import { upsertMissaoParaApp } from './handoff.js';
 
@@ -654,27 +654,31 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
+  function missaoTemFormulario(data) {
+    return (data.insumos || []).some(it => it.tipo === 'formulario');
+  }
+
   function buildParentCardHtml(kind, data, activeTab = 'sobre') {
     const id = data.id;
     const memCount = (data.memorias || []).length;
-    const sobreActive = activeTab !== 'memorias';
     const badge = memCount ? `<span class="card-tab-badge">${memCount}</span>` : '';
+    // Aba "Respostas": só para missão com formulário e admin logado (RLS).
+    const temResp = kind === 'missao' && isAuthenticated && missaoTemFormulario(data);
+    const act = activeTab === 'memorias' || activeTab === 'respostas' ? activeTab : 'sobre';
+    const abaBtn = (t, rotulo) => `<button type="button" class="card-tab${act === t ? ' is-active' : ''}" role="tab"
+      aria-selected="${act === t}" aria-controls="panel-${t}-${id}" id="tab-${t}-${id}"
+      onclick="switchCardTab('${id}','${t}')">${rotulo}</button>`;
+    const painel = (t, inner) => `<div class="card-tab-panel" id="panel-${t}-${id}" role="tabpanel" aria-labelledby="tab-${t}-${id}" ${act === t ? '' : 'hidden'}>${inner}</div>`;
     return `
       <div class="context-card" data-card-id="${id}">
         <div class="card-tabs" role="tablist" aria-label="Conteúdo do card">
-          <button type="button" class="card-tab${sobreActive ? ' is-active' : ''}" role="tab"
-            aria-selected="${sobreActive}" aria-controls="panel-sobre-${id}" id="tab-sobre-${id}"
-            onclick="switchCardTab('${id}','sobre')">Sobre</button>
-          <button type="button" class="card-tab${!sobreActive ? ' is-active' : ''}" role="tab"
-            aria-selected="${!sobreActive}" aria-controls="panel-memorias-${id}" id="tab-memorias-${id}"
-            onclick="switchCardTab('${id}','memorias')">Memórias${badge}</button>
+          ${abaBtn('sobre', 'Sobre')}
+          ${abaBtn('memorias', `Memórias${badge}`)}
+          ${temResp ? abaBtn('respostas', 'Respostas') : ''}
         </div>
-        <div class="card-tab-panel" id="panel-sobre-${id}" role="tabpanel" aria-labelledby="tab-sobre-${id}" ${sobreActive ? '' : 'hidden'}>
-          ${kind === 'missao' ? missaoSobreInner(data) : marcadorSobreInner(data)}
-        </div>
-        <div class="card-tab-panel" id="panel-memorias-${id}" role="tabpanel" aria-labelledby="tab-memorias-${id}" ${sobreActive ? 'hidden' : ''}>
-          ${memoryPanelHtml(kind, data)}
-        </div>
+        ${painel('sobre', kind === 'missao' ? missaoSobreInner(data) : marcadorSobreInner(data))}
+        ${painel('memorias', memoryPanelHtml(kind, data))}
+        ${temResp ? painel('respostas', '<p class="figital-empty-state">Carregando respostas…</p>') : ''}
         ${markerActionsHtml(kind, id, data.cor)}
       </div>
     `;
@@ -722,21 +726,56 @@ document.addEventListener('DOMContentLoaded', () => {
   window.switchCardTab = function(id, tab) {
     const card = document.querySelector(`.context-card[data-card-id="${id}"]`);
     if (!card) return;
-    const sobre = tab === 'sobre';
-    const tabSobre = card.querySelector('#tab-sobre-' + id);
-    const tabMem = card.querySelector('#tab-memorias-' + id);
-    const panelSobre = card.querySelector('#panel-sobre-' + id);
-    const panelMem = card.querySelector('#panel-memorias-' + id);
-    tabSobre?.classList.toggle('is-active', sobre);
-    tabMem?.classList.toggle('is-active', !sobre);
-    if (tabSobre) tabSobre.setAttribute('aria-selected', String(sobre));
-    if (tabMem) tabMem.setAttribute('aria-selected', String(!sobre));
-    if (panelSobre) panelSobre.hidden = !sobre;
-    if (panelMem) panelMem.hidden = sobre;
+    ['sobre', 'memorias', 'respostas'].forEach(t => {
+      const tabBtn = card.querySelector('#tab-' + t + '-' + id);
+      const panel = card.querySelector('#panel-' + t + '-' + id);
+      const ativo = t === tab;
+      if (tabBtn) { tabBtn.classList.toggle('is-active', ativo); tabBtn.setAttribute('aria-selected', String(ativo)); }
+      if (panel) panel.hidden = !ativo;
+    });
+    if (tab === 'respostas') window.carregarRespostas(id);
     const popup = parentById.get(id)?.marker.getPopup();
     if (popup && popup._map) {
       popup._updateLayout();
       popup._updatePosition();
+    }
+  };
+
+  // Busca as respostas de formulário da missão no Supabase e preenche a aba.
+  // Só retorna dados para usuário logado (RLS: select autenticado).
+  function renderEnvioRespostas(row) {
+    const d = row.data || {};
+    const quando = d.enviadoEm ? formatMemoryDate(String(d.enviadoEm).slice(0, 10)) : '';
+    const itens = (d.itens || []).map(it => `
+      <div class="card-meta-item" style="display:block; margin-bottom:6px">
+        <strong>${escapeHtml(it.enunciado || '')}</strong><br>
+        ${it.valor ? escapeHtml(it.valor) : '<em>(em branco)</em>'}
+      </div>`).join('');
+    return `
+      <div class="context-card context-card-simple" style="margin-bottom:8px">
+        <p style="font-size:0.78rem; color: var(--text-muted); margin-bottom:6px">${escapeHtml(d.autor || 'Anônimo')}${quando ? ` • ${quando}` : ''}</p>
+        ${itens || '<p class="figital-empty-state">Sem itens.</p>'}
+      </div>`;
+  }
+
+  window.carregarRespostas = async function(missaoId) {
+    const panel = document.getElementById('panel-respostas-' + missaoId);
+    if (!panel) return;
+    if (!supabase) { panel.innerHTML = '<p class="figital-empty-state">Entre para ver as respostas.</p>'; return; }
+    panel.innerHTML = '<p class="figital-empty-state">Carregando respostas…</p>';
+    try {
+      const { data, error } = await supabase
+        .from('respostas')
+        .select('data, created_at')
+        .eq('missao_id', missaoId)
+        .order('created_at', { ascending: false });
+      if (error) { panel.innerHTML = '<p class="figital-empty-state">Não foi possível carregar.</p>'; return; }
+      if (!data || !data.length) { panel.innerHTML = '<p class="figital-empty-state">Nenhuma resposta ainda.</p>'; return; }
+      panel.innerHTML = data.map(renderEnvioRespostas).join('');
+      const tabBtn = document.getElementById('tab-respostas-' + missaoId);
+      if (tabBtn) tabBtn.innerHTML = `Respostas <span class="card-tab-badge">${data.length}</span>`;
+    } catch (e) {
+      panel.innerHTML = '<p class="figital-empty-state">Não foi possível carregar.</p>';
     }
   };
 
@@ -958,6 +997,12 @@ document.addEventListener('DOMContentLoaded', () => {
       L.DomEvent.disableClickPropagation(el);
       L.DomEvent.disableScrollPropagation(el);
     });
+    // Missão com aba "Respostas": busca para preencher a contagem/conteúdo (logado).
+    const card = root.querySelector('.context-card[data-card-id]');
+    const cardId = card?.getAttribute('data-card-id');
+    if (cardId && root.querySelector('#panel-respostas-' + cardId)) {
+      window.carregarRespostas(cardId);
+    }
   });
 
   // (E) ÁREAS DE INTERVENÇÃO — áreas reais (contornos do OpenStreetMap, simplificados)
@@ -2732,6 +2777,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function createInsumosBuilder({ listId, addBtnId }) {
     const state = [];
+    let pergSeq = 0;
+    function novaPergunta() {
+      pergSeq += 1;
+      return { id: `perg-${Date.now().toString(36)}-${pergSeq}`, enunciado: '', tipo: 'multipla', obrigatoria: true, opcoes: ['', '', '', ''] };
+    }
+    const LETRAS = ['a', 'b', 'c', 'd'];
+    // Editor de perguntas (só quando o insumo é do tipo 'formulario').
+    function perguntasEditorHtml(item) {
+      const perguntas = item.perguntas || [];
+      const linhas = perguntas.map((p, j) => `
+        <div class="form-perg-row" data-pergunta-row data-perg="${j}" data-pergunta-id="${escapeHtml(p.id || '')}" style="border:1px solid var(--border-subtle,#e2e8f0); border-radius:8px; padding:8px; margin-top:8px;">
+          <div class="totem-insumo-row-header">
+            <span>Pergunta ${j + 1}</span>
+            <button type="button" class="row-remove-btn" data-remove-pergunta data-perg="${j}">Remover</button>
+          </div>
+          <label class="totem-insumo-field" style="grid-column:1/-1">
+            <span>Pergunta</span>
+            <input type="text" class="form-input" data-perg-field="enunciado" value="${escapeHtml(p.enunciado || '')}" placeholder="Ex: Como está a nascente hoje?" />
+          </label>
+          <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end; margin-top:6px;">
+            <label class="totem-insumo-field">
+              <span>Tipo</span>
+              <select class="form-select" data-perg-field="tipo" data-perg="${j}">
+                <option value="multipla" ${p.tipo !== 'aberta' ? 'selected' : ''}>Múltipla (a/b/c/d)</option>
+                <option value="aberta" ${p.tipo === 'aberta' ? 'selected' : ''}>Resposta escrita</option>
+              </select>
+            </label>
+            <label class="percurso-toggle" style="font-size:0.76rem">
+              <input type="checkbox" data-perg-field="obrigatoria" ${p.obrigatoria !== false ? 'checked' : ''} />
+              <span>Obrigatória</span>
+            </label>
+          </div>
+          ${p.tipo !== 'aberta' ? `
+          <div class="form-perg-opcoes" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
+            ${[0, 1, 2, 3].map(k => `
+              <label class="totem-insumo-field">
+                <span>Alternativa ${LETRAS[k]}</span>
+                <input type="text" class="form-input" data-perg-field="opcao" data-opt="${k}" value="${escapeHtml((p.opcoes && p.opcoes[k]) || '')}" />
+              </label>`).join('')}
+          </div>` : ''}
+        </div>
+      `).join('') || '<p class="figital-empty-state">Nenhuma pergunta ainda.</p>';
+      return `
+        <div class="form-perg-editor" style="grid-column:1/-1">
+          <div class="percurso-totens-header">
+            <label class="form-label">Perguntas do formulário</label>
+            <button type="button" class="btn-link-add" data-add-pergunta>Adicionar pergunta</button>
+          </div>
+          ${linhas}
+        </div>`;
+    }
     function render() {
       const container = document.getElementById(listId);
       if (!container) return;
@@ -2757,7 +2853,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </label>
             <label class="totem-insumo-field" style="grid-column: 1 / -1">
               <span>Rótulo</span>
-              <input type="text" class="form-input" data-insumo-field="rotulo" data-index="${i}" value="${escapeHtml(item.rotulo || '')}" placeholder="Ex: Foto do vale" />
+              <input type="text" class="form-input" data-insumo-field="rotulo" data-index="${i}" value="${escapeHtml(item.rotulo || '')}" placeholder="${item.tipo === 'formulario' ? 'Ex: Responder formulário' : 'Ex: Foto do vale'}" />
             </label>
             <label class="percurso-toggle" style="font-size:0.76rem">
               <input type="checkbox" data-insumo-field="obrigatorio" data-index="${i}" ${item.obrigatorio ? 'checked' : ''} />
@@ -2765,6 +2861,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </label>
           </div>
           <div class="totem-insumo-row-extra">
+            ${item.tipo === 'formulario' ? perguntasEditorHtml(item) : `
             <label class="totem-insumo-field">
               <span>Grupo</span>
               <input type="text" class="form-input" data-insumo-field="grupoId" data-index="${i}" value="${escapeHtml(item.grupoId || '')}" placeholder="Opcional" />
@@ -2781,10 +2878,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <label class="percurso-toggle" style="font-size:0.76rem">
               <input type="checkbox" data-insumo-field="gpsObrigatorio" data-index="${i}" ${item.validacao?.gpsObrigatorio ? 'checked' : ''} />
               <span>GPS obrigatório</span>
-            </label>` : ''}
+            </label>` : ''}`}
           </div>
         </div>
-      `).join('') || '<p class="figital-empty-state">Nenhum item ainda. Adicione foto, áudio, texto ou GPS.</p>';
+      `).join('') || '<p class="figital-empty-state">Nenhum item ainda. Adicione foto, áudio, texto, GPS ou um formulário.</p>';
 
       container.querySelectorAll('[data-remove-insumo]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2796,13 +2893,39 @@ document.addEventListener('DOMContentLoaded', () => {
       container.querySelectorAll('[data-insumo-field="tipo"]').forEach(sel => {
         sel.addEventListener('change', () => {
           syncFromDom();
-          render(); // tipo mudou: re-render para mostrar/esconder campos de GPS
+          render(); // tipo mudou: re-render para mostrar/esconder campos de GPS/formulário
         });
       });
       container.querySelectorAll('[data-insumo-field]').forEach(el => {
         if (el.getAttribute('data-insumo-field') === 'tipo') return;
         el.addEventListener('input', () => syncFromDom());
         el.addEventListener('change', () => syncFromDom());
+      });
+      // --- Formulário: add/remover pergunta e troca de tipo re-renderizam ---
+      container.querySelectorAll('[data-add-pergunta]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          syncFromDom();
+          const row = btn.closest('[data-insumo-index]');
+          const item = state[Number(row.getAttribute('data-insumo-index'))];
+          item.perguntas = item.perguntas || [];
+          item.perguntas.push(novaPergunta());
+          render();
+        });
+      });
+      container.querySelectorAll('[data-remove-pergunta]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          syncFromDom();
+          const row = btn.closest('[data-insumo-index]');
+          const item = state[Number(row.getAttribute('data-insumo-index'))];
+          (item.perguntas || []).splice(Number(btn.getAttribute('data-perg')), 1);
+          render();
+        });
+      });
+      container.querySelectorAll('[data-perg-field="tipo"]').forEach(sel => {
+        sel.addEventListener('change', () => {
+          syncFromDom();
+          render(); // tipo da pergunta mudou: mostrar/esconder as alternativas
+        });
       });
     }
     function syncFromDom() {
@@ -2830,6 +2953,20 @@ document.addEventListener('DOMContentLoaded', () => {
             distanciaMaximaM: raioEl?.value ? Number(raioEl.value) : 80,
             gpsObrigatorio: !!gpsObrigEl?.checked
           };
+        }
+        if (item.tipo === 'formulario') {
+          const pergRows = row.querySelectorAll('[data-pergunta-row]');
+          item.perguntas = Array.from(pergRows).map(pr => {
+            const ptipo = pr.querySelector('[data-perg-field="tipo"]')?.value === 'aberta' ? 'aberta' : 'multipla';
+            const opcoes = Array.from(pr.querySelectorAll('[data-perg-field="opcao"]')).map(o => o.value);
+            return {
+              id: pr.getAttribute('data-pergunta-id') || `perg-${Date.now().toString(36)}`,
+              enunciado: pr.querySelector('[data-perg-field="enunciado"]')?.value || '',
+              tipo: ptipo,
+              obrigatoria: !!pr.querySelector('[data-perg-field="obrigatoria"]')?.checked,
+              opcoes: ptipo === 'multipla' ? [opcoes[0] || '', opcoes[1] || '', opcoes[2] || '', opcoes[3] || ''] : undefined
+            };
+          });
         }
       });
     }

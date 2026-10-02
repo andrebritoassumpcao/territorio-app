@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { QrMock, VinculoMemoria } from '../types';
+import type { Insumo, QrMock, RespostaItem, VinculoMemoria } from '../types';
 import { useAcervo } from '../store/useAcervo';
 import { buscarMissao } from '../data/missoesRemotas';
 import { dbEnabled } from '../data/supabase';
+import { enviarRespostas } from '../data/respostas';
 import { useAviso } from './aviso';
 import { CAMINHO_JORNADA, useRota } from './rota';
 import ScanSheet from '../features/scan/ScanSheet';
@@ -11,6 +12,7 @@ import RecompensaSheet from '../features/missao/RecompensaSheet';
 import TotemSheet from '../features/totem/TotemSheet';
 import MemoriaForm from '../features/memoria/MemoriaForm';
 import CenaNpc from '../features/npc/CenaNpc';
+import FormularioSheet from '../features/formulario/FormularioSheet';
 import TutorialTour from '../features/tutorial/TutorialTour';
 
 // Orquestra o que abre sobre Minha jornada — um de cada vez:
@@ -21,6 +23,7 @@ type Estado =
   | { tipo: 'scan' }
   | { tipo: 'npc'; alvo: Alvo; id: string }
   | { tipo: 'missao'; missaoId: string }
+  | { tipo: 'formulario'; missaoId: string; insumo: Insumo }
   | { tipo: 'recompensa'; missaoId: string; recompensa: string; xp: number }
   | { tipo: 'totem'; totemId: string }
   | { tipo: 'memoria'; vinculo: VinculoMemoria };
@@ -46,7 +49,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
     setRegistros({});
   };
   const { rota, navegar } = useRota();
-  const { missoes, totens, npcVistos, marcarNpcVisto, adicionarMissao, tutorialVisto, marcarTutorialVisto } = useAcervo();
+  const { perfil, missoes, totens, npcVistos, marcarNpcVisto, adicionarMissao, tutorialVisto, marcarTutorialVisto } = useAcervo();
   const avisar = useAviso();
   // Missão buscada no Supabase (autorada no mapa) esperando entrar no store para abrir.
   const [missaoPendente, setMissaoPendente] = useState<string | null>(null);
@@ -205,12 +208,28 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
           onRegistrar={(insumoId) =>
             setRegistros((r) => ({ ...r, [estado.missaoId]: [...(r[estado.missaoId] ?? []), insumoId] }))
           }
+          onResponderFormulario={(insumo) => setEstado({ tipo: 'formulario', missaoId: estado.missaoId, insumo })}
           onAdicionarMemoria={() => setEstado({ tipo: 'memoria', vinculo: { tipo: 'missao', id: estado.missaoId } })}
           onFechar={fechar}
           onOuvirNpc={() => setEstado({ tipo: 'npc', alvo: 'missao', id: estado.missaoId })}
           onConcluida={(r) => setEstado({ tipo: 'recompensa', missaoId: estado.missaoId, recompensa: r.recompensa, xp: r.xp })}
         />
       )}
+
+      {estado.tipo === 'formulario' && (() => {
+        const { missaoId, insumo } = estado;
+        const voltarAMissao = () => setEstado({ tipo: 'missao', missaoId });
+        const concluir = (itens: RespostaItem[]) => {
+          // Marca a tarefa (insumo) como feita e grava as respostas (best-effort).
+          setRegistros((r) => ({ ...r, [missaoId]: [...(r[missaoId] ?? []), insumo.id] }));
+          enviarRespostas(missaoId, { autor: perfil.nome, enviadoEm: new Date().toISOString(), itens }).then((res) => {
+            if (!res.ok && res.message) console.warn('[respostas]', res.message);
+          });
+          voltarAMissao();
+          avisar('Formulário respondido.');
+        };
+        return <FormularioSheet insumo={insumo} onConcluir={concluir} onFechar={voltarAMissao} />;
+      })()}
 
       {estado.tipo === 'recompensa' && (
         <RecompensaSheet

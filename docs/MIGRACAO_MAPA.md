@@ -23,6 +23,7 @@ Este documento registra **o que foi trazido do `Territorio-map` para dentro do `
 - Gravação da missão no Supabase (tabela `missoes`, formato `Missao`).
 - Leitura por ID no app e execução completa do fluxo de missão.
 - No card de missão do mapa, **"Ver missão"** faz upsert e abre a **tela de missão do app** (deep link `/m/{mapa}/missao/{id}`).
+- **Formulário como insumo** (`tipo: 'formulario'`): editor de perguntas no mapa (múltipla a/b/c/d ou escrita, obrigatória/opcional); viaja no handoff (`perguntas`); no app, responder em **steps** marca a tarefa feita e **grava em `respostas`** (anônimo grava, só admin lê); o popup da missão no mapa mostra a aba **"Respostas (N)"** (só logado). Tabela `respostas` + RLS aplicadas no Supabase.
 
 ## Veio na tela (mapa inteiro) mas NÃO integra com o app
 

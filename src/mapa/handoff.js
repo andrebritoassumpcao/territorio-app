@@ -21,16 +21,39 @@ function categoriaParaApp(cat) {
   return 'meio-ambiente';
 }
 
+// Perguntas do formulário (insumo 'formulario') → formato do app (enquete).
+function perguntasParaApp(perguntas) {
+  return (perguntas || [])
+    .filter((p) => (p?.enunciado || '').trim())
+    .map((p, i) => {
+      const tipo = p.tipo === 'aberta' ? 'aberta' : 'multipla';
+      const base = {
+        id: p.id || `pergunta-${i + 1}`,
+        enunciado: p.enunciado.trim(),
+        tipo,
+        obrigatoria: p.obrigatoria ?? true
+      };
+      if (tipo === 'multipla') {
+        // 4 alternativas (a/b/c/d); completa/corta para 4 e remove vazias ao final.
+        const opcoes = (p.opcoes || []).map((o) => (o || '').trim());
+        base.opcoes = [0, 1, 2, 3].map((k) => opcoes[k] || '');
+      }
+      return base;
+    });
+}
+
 function insumosParaApp(insumos) {
   return (insumos || [])
     .map((it, i) => {
       const tipo = TIPOS_APP.has(it.tipo) ? it.tipo : it.tipo === 'memoria' ? 'foto' : 'foto';
-      return {
+      const base = {
         id: it.id || `insumo-${i + 1}`,
         tipo,
         rotulo: it.rotulo || tipo,
         obrigatorio: it.obrigatorio ?? true
       };
+      if (tipo === 'formulario') base.perguntas = perguntasParaApp(it.perguntas);
+      return base;
     });
 }
 

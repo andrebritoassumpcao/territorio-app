@@ -98,7 +98,9 @@ export function createItemInsumo(overrides = {}) {
     visibilidade: overrides.visibilidade || VISIBILIDADE_INSUMO.INTERNO,
     validacao: overrides.validacao || defaultValidacaoParaTipo(tipo),
     grupoId: overrides.grupoId || null,
-    minimoGrupo: overrides.minimoGrupo ?? null
+    minimoGrupo: overrides.minimoGrupo ?? null,
+    // Só usado quando tipo === 'formulario': perguntas do formulário (a/b/c/d ou aberta).
+    perguntas: overrides.perguntas || []
   };
 }
 

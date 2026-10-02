@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
+import type { Insumo } from '../../types';
 import { useAcervo } from '../../store/useAcervo';
 import { CATEGORIA_ROTULO } from '../jornada/rotulos';
 import OuvirNpc from '../npc/OuvirNpc';
@@ -10,6 +11,8 @@ interface Props {
   /** Insumos já registrados: vivem no fluxo para sobreviver à ida ao formulário de memória. */
   registrados: string[];
   onRegistrar: (insumoId: string) => void;
+  /** Abre o formulário em steps (insumo tipo 'formulario'). */
+  onResponderFormulario: (insumo: Insumo) => void;
   onFechar: () => void;
   onConcluida: (r: { recompensa: string; xp: number }) => void;
   onOuvirNpc: () => void;
@@ -19,7 +22,7 @@ interface Props {
 // Executar a missão: registrar (mock) cada insumo pedido e enviar. Só habilita
 // "Enviar" quando os insumos obrigatórios estão registrados (RN-FIG-020).
 // Memórias da missão (RN-MEM-004) são livres: não contam para o envio.
-export default function MissaoSheet({ missaoId, registrados, onRegistrar, onFechar, onConcluida, onOuvirNpc, onAdicionarMemoria }: Props) {
+export default function MissaoSheet({ missaoId, registrados, onRegistrar, onResponderFormulario, onFechar, onConcluida, onOuvirNpc, onAdicionarMemoria }: Props) {
   const { missoes, memorias, concluirMissao } = useAcervo();
   const missao = missoes.find((m) => m.id === missaoId);
   const memoriasDaMissao = memorias.filter((m) => m.missaoId === missaoId);
@@ -69,6 +72,15 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onFech
                 </span>
                 {feito ? (
                   <span className="insumo__ok" aria-label="Registrado"><Icone nome="check" tamanho={18} /></span>
+                ) : i.tipo === 'formulario' ? (
+                  <button
+                    type="button"
+                    className="botao-secundario botao-secundario--sm"
+                    data-tour={idx === 0 ? 'registrar' : undefined}
+                    onClick={() => onResponderFormulario(i)}
+                  >
+                    <Icone nome="message" tamanho={16} /> Responder
+                  </button>
                 ) : (
                   <button
                     type="button"
