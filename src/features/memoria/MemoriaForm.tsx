@@ -27,7 +27,10 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [consentido, setConsentido] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const inputFoto = useRef<HTMLInputElement>(null);
+  // Dois caminhos no celular: "Tirar foto" abre a câmera na hora (capture);
+  // "Galeria" escolhe uma imagem existente. No desktop, ambos abrem o seletor.
+  const inputCamera = useRef<HTMLInputElement>(null);
+  const inputGaleria = useRef<HTMLInputElement>(null);
 
   function escolherFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const selecionado = e.target.files?.[0];
@@ -90,20 +93,24 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
       )}
 
       <form className="form" onSubmit={salvar}>
-        <button
-          type="button"
-          className="foto-drop"
-          onClick={() => inputFoto.current?.click()}
-          style={foto ? { backgroundImage: `url(${foto})` } : undefined}
-        >
+        <div className="foto-drop" style={foto ? { backgroundImage: `url(${foto})` } : undefined}>
           {!foto && (
             <span className="foto-drop__vazio">
               <Icone nome="camera" tamanho={24} />
-              <span>Adicionar foto (opcional)</span>
+              <span>Foto (opcional)</span>
             </span>
           )}
-        </button>
-        <input ref={inputFoto} type="file" accept="image/*" hidden onChange={escolherFoto} />
+        </div>
+        <div className="foto-acoes">
+          <button type="button" className="foto-acao" onClick={() => inputCamera.current?.click()}>
+            <Icone nome="camera" tamanho={16} /> {foto ? 'Refazer foto' : 'Tirar foto'}
+          </button>
+          <button type="button" className="foto-acao" onClick={() => inputGaleria.current?.click()}>
+            <Icone nome="image" tamanho={16} /> Galeria
+          </button>
+        </div>
+        <input ref={inputCamera} type="file" accept="image/*" capture="environment" hidden onChange={escolherFoto} />
+        <input ref={inputGaleria} type="file" accept="image/*" hidden onChange={escolherFoto} />
 
         <label className="campo">
           <span className="campo__label">Título</span>

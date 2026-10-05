@@ -12,6 +12,7 @@ export type NomeIcone =
   | 'droplet'
   | 'trophy'
   | 'camera'
+  | 'image'
   | 'arrow-left'
   | 'sparkles'
   | 'message'
@@ -42,6 +43,7 @@ const PATHS: Record<NomeIcone, string> = {
   droplet: 'M12 2.7s6 5.5 6 10.3a6 6 0 1 1-12 0C6 8.2 12 2.7 12 2.7Z',
   trophy: 'M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 20h6M12 14v6',
   camera: 'M14.5 4h-5l-1.2 2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.3ZM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
+  image: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM21 16l-5-5-6 6-3-3-4 4',
   'arrow-left': 'M19 12H5M12 19l-7-7 7-7',
   sparkles: 'M12 3l1.8 4.6L18.4 9l-4.6 1.8L12 15l-1.8-4.2L5.6 9l4.6-1.4L12 3ZM19 14l.9 2.3L22 17l-2.1.7L19 20l-.9-2.3L16 17l2.1-.7L19 14Z',
   message: 'M21 11.5a8 8 0 0 1-11.6 7.1L3 21l2.4-6.4A8 8 0 1 1 21 11.5Z',
