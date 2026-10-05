@@ -45,12 +45,16 @@ export function iniciarTourGuiado(ctrl: TourCtrl, aoFim: () => void) {
       element: '[data-tour="scan"]',
       popover: {
         title: 'Tudo começa por um QR',
-        description: 'No território, cada missão tem um QR. Aponte a câmera do celular — ou toque em “Simular leitura” para testar aqui.'
+        description: 'Cada missão e totem do território tem um QR. Toque em “Escanear QR” e aponte a câmera para começar a sua jornada.'
       }
     },
     {
       element: '[data-tour="missao"]',
       popover: { title: 'Suas missões', description: 'As missões por fazer ficam aqui, na sua jornada.' }
+    },
+    {
+      element: '[data-tour="insignias"]',
+      popover: { title: 'Suas conquistas', description: 'Você ganha insígnias ao avançar: primeiro acesso, primeira missão, primeira memória e mais.' }
     },
     {
       element: '[data-tour="memorias"]',

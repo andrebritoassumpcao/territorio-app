@@ -23,18 +23,23 @@ interface EstadoAcervo {
 }
 
 interface Acervo extends EstadoAcervo {
-  concluirMissao: (missaoId: string) => { recompensa: string; xp: number } | null;
-  adicionarMemoria: (entrada: { missaoId: string | null; totemId: string | null; titulo: string; descricao: string; foto: string | null }) => void;
-  /** Injeta uma missão autorada no mapa (handoff por QR). Idempotente; cria a insígnia par. */
+  /** Conclui a missão (XP + conquistas). Retorna também as insígnias recém-desbloqueadas. */
+  concluirMissao: (missaoId: string) => { recompensa: string; xp: number; novasInsignias: Insignia[] } | null;
+  /** Adiciona a memória; retorna as insígnias recém-desbloqueadas (ex.: "Primeira memória"). */
+  adicionarMemoria: (entrada: { missaoId: string | null; totemId: string | null; titulo: string; descricao: string; foto: string | null }) => Insignia[];
+  /** Injeta uma missão autorada no mapa (handoff por QR). Idempotente. */
   adicionarMissao: (missao: Missao) => void;
   marcarNpcVisto: (chave: string) => void;
   marcarTutorialVisto: () => void;
   resetar: () => void;
 }
 
-// v3: memórias ganharam `missaoId` (e a semente, uma memória na Horta).
-// v2: falas do NPC viraram {id, texto} (§14.2) e entrou `npcVistos`.
-const CHAVE = 'territorio.acervo.v3';
+// v5: perfil inicial "Usuário".
+// v4: removidos os mocks (missões/totens/memórias) e insígnias passaram a ser 4
+// conquistas por gatilho (não mais por missão). Bump da chave para zerar quem já
+// tinha o estado mockado salvo.
+// v3: memórias ganharam `missaoId`. v2: falas do NPC {id, texto} + `npcVistos`.
+const CHAVE = 'territorio.acervo.v5';
 
 function estadoInicial(): EstadoAcervo {
   return {
@@ -59,6 +64,11 @@ function carregar(): EstadoAcervo {
   return estadoInicial();
 }
 
+// Acende as insígnias cujos ids estão na lista (só se ainda não conquistadas).
+function desbloquear(insignias: Insignia[], ids: string[]): Insignia[] {
+  return insignias.map((i) => (ids.includes(i.id) && !i.conquistada ? { ...i, conquistada: true } : i));
+}
+
 const AcervoContext = createContext<Acervo | null>(null);
 
 export function AcervoProvider({ children }: { children: ReactNode }) {
@@ -77,6 +87,13 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
     if (!missao || missao.status === 'concluida') return null;
     const agora = new Date().toISOString();
 
+    // Conquistas: "Primeira missão" na 1ª; "Guardião do Território" ao chegar a 3 concluídas.
+    const totalConcluidas = estado.missoes.filter((m) => m.status === 'concluida').length + 1;
+    const alvos = ['primeira-missao', ...(totalConcluidas >= 3 ? ['guardiao-territorio'] : [])];
+    const novasInsignias = estado.insignias
+      .filter((i) => alvos.includes(i.id) && !i.conquistada)
+      .map((i) => ({ ...i, conquistada: true }));
+
     setEstado((s) => {
       // XP com rollover simples de nível.
       let { nivel, xp, xpProximoNivel } = s.perfil;
@@ -90,14 +107,18 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
         ...s,
         perfil: { ...s.perfil, nivel, xp, xpProximoNivel },
         missoes: s.missoes.map((m) => (m.id === missaoId ? { ...m, status: 'concluida', concluidaEm: agora } : m)),
-        insignias: s.insignias.map((i) => (i.missaoId === missaoId ? { ...i, conquistada: true } : i))
+        insignias: desbloquear(s.insignias, alvos)
       };
     });
 
-    return { recompensa: missao.recompensa, xp: missao.xp };
-  }, [estado.missoes]);
+    return { recompensa: missao.recompensa, xp: missao.xp, novasInsignias };
+  }, [estado.missoes, estado.insignias]);
 
   const adicionarMemoria = useCallback<Acervo['adicionarMemoria']>((entrada) => {
+    const novasInsignias = estado.insignias
+      .filter((i) => i.id === 'primeira-memoria' && !i.conquistada)
+      .map((i) => ({ ...i, conquistada: true }));
+
     setEstado((s) => {
       const nova: Memoria = {
         id: `mem-${Date.now().toString(36)}`,
@@ -110,9 +131,11 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
         totemId: entrada.totemId,
         comentarios: []
       };
-      return { ...s, memorias: [nova, ...s.memorias] };
+      return { ...s, memorias: [nova, ...s.memorias], insignias: desbloquear(s.insignias, ['primeira-memoria']) };
     });
-  }, []);
+
+    return novasInsignias;
+  }, [estado.insignias]);
 
   const adicionarMissao = useCallback<Acervo['adicionarMissao']>((missao) => {
     setEstado((s) => {
@@ -124,15 +147,7 @@ export function AcervoProvider({ children }: { children: ReactNode }) {
             m.id === missao.id ? { ...missao, status: m.status, concluidaEm: m.concluidaEm } : m
           )
         : [missao, ...s.missoes];
-
-      const insigniaId = `ins-${missao.id}`;
-      const nomeInsignia = missao.recompensa || 'Insígnia da missão';
-      const temInsignia = s.insignias.some((i) => i.id === insigniaId);
-      const insignias = temInsignia
-        ? s.insignias.map((i) => (i.id === insigniaId ? { ...i, nome: nomeInsignia } : i))
-        : [...s.insignias, { id: insigniaId, nome: nomeInsignia, conquistada: false, missaoId: missao.id } as Insignia];
-
-      return { ...s, missoes, insignias };
+      return { ...s, missoes };
     });
   }, []);
 

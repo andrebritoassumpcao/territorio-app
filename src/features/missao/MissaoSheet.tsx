@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
-import type { Insumo } from '../../types';
+import type { Insignia, Insumo } from '../../types';
 import { useAcervo } from '../../store/useAcervo';
 import { CATEGORIA_ROTULO } from '../jornada/rotulos';
 import OuvirNpc from '../npc/OuvirNpc';
@@ -14,7 +14,7 @@ interface Props {
   /** Abre o formulário em steps (insumo tipo 'formulario'). */
   onResponderFormulario: (insumo: Insumo) => void;
   onFechar: () => void;
-  onConcluida: (r: { recompensa: string; xp: number }) => void;
+  onConcluida: (r: { recompensa: string; xp: number; novasInsignias: Insignia[] }) => void;
   onOuvirNpc: () => void;
   onAdicionarMemoria: () => void;
 }

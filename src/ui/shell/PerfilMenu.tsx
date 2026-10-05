@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAcervo } from '../../store/useAcervo';
 import Icone from '../Icone';
+import Avatar from '../Avatar';
 import { useAviso } from '../aviso';
 import { CAMINHO_JORNADA, useRota } from '../rota';
 
@@ -38,7 +39,7 @@ export default function PerfilMenu({ onFechar }: Props) {
       <div className="profile-menu-scrim" onClick={onFechar} aria-hidden="true" />
       <div className="profile-menu" id="profile-menu" role="menu" aria-label="Perfil">
         <div className="profile-menu-identity">
-          <img className="avatar-photo avatar-photo-lg" src={perfil.avatar} alt="" width={48} height={48} />
+          <Avatar className="avatar-photo avatar-photo-lg" nome={perfil.nome} avatar={perfil.avatar} tamanho={48} />
           <div className="profile-menu-identity-copy">
             <p className="user-name">{perfil.nome}</p>
             <div className="profile-level-row">
@@ -86,11 +87,6 @@ export default function PerfilMenu({ onFechar }: Props) {
         {/* Só no protótipo: atalhos da apresentação */}
         <div className="profile-menu-block profile-menu-demo">
           <h3 className="profile-menu-heading profile-menu-heading--sm">Demonstração</h3>
-          <button type="button" className="profile-menu-link" role="menuitem" onClick={() => ir('/qrs')}>
-            <span className="profile-icon-tile"><Icone nome="qr-code" tamanho={20} /></span>
-            <span>QRs de demonstração</span>
-            <Icone nome="chevron-right" tamanho={14} className="profile-menu-chevron" />
-          </button>
           <button
             type="button"
             className="profile-menu-link"

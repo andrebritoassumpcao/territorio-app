@@ -2,13 +2,13 @@ import { useAcervo } from '../../store/useAcervo';
 import { useFluxo } from '../../ui/fluxo';
 import Icone from '../../ui/Icone';
 import PerfilHeader from './PerfilHeader';
-import { CATEGORIA_ICONE, CATEGORIA_ROTULO, PAPEL_ROTULO } from './rotulos';
+import { CATEGORIA_ICONE, CATEGORIA_ROTULO } from './rotulos';
 
 // Página "Minha jornada" do perfil: onde vive todo o conteúdo de missões.
 // Os fluxos (missão, totem, memória, scan simulado) abrem como bottom-sheets por
 // cima (ver ui/fluxo.tsx); o QR lido pela câmera nativa entra por deep link.
 export default function MinhaJornada() {
-  const { missoes, totens, memorias, insignias } = useAcervo();
+  const { missoes, memorias, insignias } = useAcervo();
   const fluxo = useFluxo();
 
   const abertas = missoes.filter((m) => m.status !== 'concluida');
@@ -23,16 +23,16 @@ export default function MinhaJornada() {
 
       <PerfilHeader />
 
-      {/* Entrada real é a câmera nativa (deep link); "Simular leitura" é o plano B da demo. */}
+      {/* Entrada por QR: escaneie com a câmera do app, ou aponte a câmera nativa do celular. */}
       <div className="dica-scan" data-tour="scan">
         <span className="dica-scan__avatar" aria-hidden="true">
           <Icone nome="qr-code" tamanho={28} />
         </span>
         <p className="dica-scan__texto">
-          Achou um QR de missão ou totem? Aponte a câmera do celular para começar a jornada.
+          Achou um QR de missão ou totem? Escaneie com a câmera para começar a jornada.
         </p>
-        <button type="button" className="botao-texto" onClick={fluxo.abrirScan}>
-          Simular leitura
+        <button type="button" className="botao-primario botao-primario--sm" onClick={fluxo.abrirScan}>
+          <Icone nome="scan" tamanho={16} /> Escanear QR
         </button>
       </div>
 
@@ -58,30 +58,13 @@ export default function MinhaJornada() {
               </button>
             </li>
           ))}
-          {abertas.length === 0 && <li className="vazio">Todas as missões foram concluídas.</li>}
-        </ul>
-      </section>
-
-      {/* Totens */}
-      <section className="secao">
-        <div className="secao__cabecalho">
-          <h2 className="secao__titulo"><Icone nome="map-pin" tamanho={18} /> Totens do território</h2>
-        </div>
-        <ul className="cards">
-          {totens.map((t) => (
-            <li key={t.id}>
-              <button type="button" className="card card--totem" onClick={() => fluxo.abrirTotem(t.id)}>
-                <span className="card__icone card__icone--totem">
-                  <Icone nome="map-pin" />
-                </span>
-                <span className="card__texto">
-                  <span className="card__titulo">{t.nome}</span>
-                  <span className="card__sub">{PAPEL_ROTULO[t.papel]}</span>
-                </span>
-                <Icone nome="chevron-right" tamanho={18} />
-              </button>
+          {abertas.length === 0 && (
+            <li className="vazio">
+              {missoes.length === 0
+                ? 'Escaneie um QR de missão para começar sua jornada.'
+                : 'Todas as missões foram concluídas.'}
             </li>
-          ))}
+          )}
         </ul>
       </section>
 
@@ -92,9 +75,9 @@ export default function MinhaJornada() {
         </div>
         <ul className="insignias">
           {insignias.map((i) => (
-            <li key={i.id} className={`insignia${i.conquistada ? ' insignia--on' : ''}`}>
-              <span className="insignia__medalha"><Icone nome={i.conquistada ? 'trophy' : 'star'} tamanho={22} /></span>
-              <span className="insignia__nome">{i.nome.replace('Insígnia ', '')}</span>
+            <li key={i.id} className={`insignia${i.conquistada ? ' insignia--on' : ''}`} title={i.descricao}>
+              <span className="insignia__medalha"><Icone nome={i.icone} tamanho={22} /></span>
+              <span className="insignia__nome">{i.nome}</span>
             </li>
           ))}
         </ul>
@@ -120,6 +103,9 @@ export default function MinhaJornada() {
               </div>
             </li>
           ))}
+          {memorias.length === 0 && (
+            <li className="vazio">Nenhuma memória ainda. Deixe a sua ao concluir uma missão.</li>
+          )}
         </ul>
       </section>
 
