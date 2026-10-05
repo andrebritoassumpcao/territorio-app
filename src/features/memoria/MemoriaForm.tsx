@@ -3,12 +3,13 @@ import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useAcervo } from '../../store/useAcervo';
 import { salvarMemoria } from '../../data/memorias';
-import type { VinculoMemoria } from '../../types';
+import type { Insignia, VinculoMemoria } from '../../types';
 
 interface Props {
   vinculo: VinculoMemoria;
   onFechar: () => void;
-  onSalva: () => void;
+  /** Recebe as insígnias recém-desbloqueadas (ex.: "Primeira memória") para o aviso. */
+  onSalva: (novasInsignias: Insignia[]) => void;
 }
 
 // Deixar uma memória (foto opcional + comentário) ligada a uma missão ou a um
@@ -65,7 +66,7 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
     }
 
     // Cópia local otimista: usa a URL pública quando houve upload; senão, o dataURL.
-    adicionarMemoria({
+    const novasInsignias = adicionarMemoria({
       missaoId,
       totemId,
       titulo,
@@ -74,7 +75,7 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
     });
 
     setEnviando(false);
-    onSalva();
+    onSalva(novasInsignias);
   }
 
   const podeSalvar = (titulo.trim() !== '' || descricao.trim() !== '') && consentido && !enviando;

@@ -1,26 +1,22 @@
 import { useEffect, useRef } from 'react';
 import Icone, { type NomeIcone } from '../Icone';
-import { useAviso } from '../aviso';
+import { CAMINHO_JORNADA, useRota } from '../rota';
 
 interface Props {
   aberta: boolean;
   onFechar: () => void;
 }
 
-// Mesmos itens da sidebar do mapa (Territorio-map/poc/client/index.html, #sidebar).
-// No mobile vira drawer. "Mapa" navega para a página do mapa (autoria + QR);
-// os demais ainda são "Em breve" nesta visualização.
-const ITENS: { rotulo: string; icone: NomeIcone; href?: string }[] = [
-  { rotulo: 'Home', icone: 'home' },
-  { rotulo: 'Mapa', icone: 'map', href: '/mapa.html' },
-  { rotulo: 'Manual', icone: 'book' },
-  { rotulo: 'Mutirões', icone: 'users' },
-  { rotulo: 'Comunidades', icone: 'grid' },
-  { rotulo: 'Blog', icone: 'pencil' }
+// Sidebar (drawer no mobile). Por enquanto só os itens que funcionam de verdade:
+// Home (volta para Minha jornada) e Mapa (autoria + QR). Os demais itens do mapa
+// (Manual, Mutirões, Comunidades, Blog) foram removidos até existirem nesta visualização.
+const ITENS: { rotulo: string; icone: NomeIcone; href?: string; para?: string }[] = [
+  { rotulo: 'Home', icone: 'home', para: CAMINHO_JORNADA },
+  { rotulo: 'Mapa', icone: 'map', href: '/mapa.html' }
 ];
 
 export default function Sidebar({ aberta, onFechar }: Props) {
-  const avisar = useAviso();
+  const { navegar } = useRota();
   const painel = useRef<HTMLElement>(null);
 
   // Fechada, a gaveta sai da ordem de foco (inert não está nos tipos do React 18).
@@ -63,7 +59,7 @@ export default function Sidebar({ aberta, onFechar }: Props) {
                   type="button"
                   onClick={() => {
                     onFechar();
-                    avisar(`${item.rotulo}: em breve nesta visualização.`);
+                    if (item.para) navegar(item.para);
                   }}
                 >
                   <Icone nome={item.icone} tamanho={20} className="nav-icon" />

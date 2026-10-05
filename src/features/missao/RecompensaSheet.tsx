@@ -1,11 +1,14 @@
 import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useAcervo } from '../../store/useAcervo';
+import type { Insignia } from '../../types';
 
 interface Props {
   missaoId: string;
   recompensa: string;
   xp: number;
+  /** Insígnias de conquista desbloqueadas por esta missão (ex.: "Primeira missão"). */
+  novasInsignias: Insignia[];
   onFechar: () => void;
   /** Abre o formulário de memória já ligado a esta missão. */
   onDeixarMemoria: () => void;
@@ -14,7 +17,7 @@ interface Props {
 // Revelação da recompensa após enviar a missão. A insígnia e o XP já foram
 // gravados pelo store; aqui é só a celebração — com a fala `ok` do roteiro
 // (§14.2) exibida como texto, quando a missão tem NPC (sem figura humana).
-export default function RecompensaSheet({ missaoId, recompensa, xp, onFechar, onDeixarMemoria }: Props) {
+export default function RecompensaSheet({ missaoId, recompensa, xp, novasInsignias, onFechar, onDeixarMemoria }: Props) {
   const { missoes } = useAcervo();
   const npc = missoes.find((m) => m.id === missaoId)?.npc;
   const falaOk = npc?.falas.find((f) => f.id === 'ok');
@@ -28,6 +31,16 @@ export default function RecompensaSheet({ missaoId, recompensa, xp, onFechar, on
         <p className="recompensa__parabens">Missão concluída!</p>
         <p className="recompensa__insignia">{recompensa}</p>
         <p className="recompensa__xp"><Icone nome="sparkles" tamanho={16} /> +{xp} XP</p>
+
+        {novasInsignias.length > 0 && (
+          <div className="recompensa__badges">
+            {novasInsignias.map((ins) => (
+              <p key={ins.id} className="recompensa__badge">
+                <Icone nome={ins.icone} tamanho={16} /> Nova insígnia: <strong>{ins.nome}</strong>
+              </p>
+            ))}
+          </div>
+        )}
 
         {npc && falaOk ? (
           <div className="recompensa__npc">

@@ -1,12 +1,11 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Insumo, QrMock, RespostaItem, VinculoMemoria } from '../types';
+import { createContext, lazy, Suspense, useContext, useEffect, useState, type ReactNode } from 'react';
+import type { Insignia, Insumo, RespostaItem, VinculoMemoria } from '../types';
 import { useAcervo } from '../store/useAcervo';
 import { buscarMissao } from '../data/missoesRemotas';
 import { dbEnabled } from '../data/supabase';
 import { enviarRespostas } from '../data/respostas';
 import { useAviso } from './aviso';
 import { CAMINHO_JORNADA, useRota } from './rota';
-import ScanSheet from '../features/scan/ScanSheet';
 import MissaoSheet from '../features/missao/MissaoSheet';
 import RecompensaSheet from '../features/missao/RecompensaSheet';
 import TotemSheet from '../features/totem/TotemSheet';
@@ -14,6 +13,9 @@ import MemoriaForm from '../features/memoria/MemoriaForm';
 import CenaNpc from '../features/npc/CenaNpc';
 import FormularioSheet from '../features/formulario/FormularioSheet';
 import TutorialTour from '../features/tutorial/TutorialTour';
+
+// Scanner de QR (câmera) carregado sob demanda — mantém a lib @zxing fora do bundle inicial.
+const ScanSheet = lazy(() => import('../features/scan/ScanSheet'));
 
 // Orquestra o que abre sobre Minha jornada — um de cada vez:
 //   scan → [cena do NPC] → missão ⇄ memória → recompensa (→ memória);   [cena do NPC] → totem → memória.
@@ -24,7 +26,7 @@ type Estado =
   | { tipo: 'npc'; alvo: Alvo; id: string }
   | { tipo: 'missao'; missaoId: string }
   | { tipo: 'formulario'; missaoId: string; insumo: Insumo }
-  | { tipo: 'recompensa'; missaoId: string; recompensa: string; xp: number }
+  | { tipo: 'recompensa'; missaoId: string; recompensa: string; xp: number; novasInsignias: Insignia[] }
   | { tipo: 'totem'; totemId: string }
   | { tipo: 'memoria'; vinculo: VinculoMemoria };
 
@@ -133,10 +135,6 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
     abrirTotem: (totemId, origem = 'card') => abrir('totem', totemId, origem)
   };
 
-  function aoSelecionarQr(qr: QrMock) {
-    abrir(qr.alvo, qr.refId, 'qr');
-  }
-
   function cenaDoNpc(alvo: Alvo, id: string) {
     const ponto = alvo === 'missao' ? missoes.find((m) => m.id === id) : totens.find((t) => t.id === id);
     const npc = ponto && ('npc' in ponto ? ponto.npc : ponto.roteiroNpc);
@@ -160,14 +158,12 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
 
   // Memória de missão volta para a própria missão (com os registros intactos);
   // memória de totem mantém o comportamento de antes: fecha o fluxo.
-  function voltarDaMemoria(vinculo: VinculoMemoria, salvou: boolean) {
-    if (vinculo.tipo === 'missao') {
-      setEstado({ tipo: 'missao', missaoId: vinculo.id });
-      if (salvou) avisar('Memória guardada na missão.');
-    } else {
-      fechar();
-      if (salvou) avisar('Memória guardada no ponto.');
-    }
+  function voltarDaMemoria(vinculo: VinculoMemoria, salvou: boolean, novas: Insignia[] = []) {
+    if (vinculo.tipo === 'missao') setEstado({ tipo: 'missao', missaoId: vinculo.id });
+    else fechar();
+    if (!salvou) return;
+    if (novas.length) avisar(`Memória guardada! Nova insígnia: ${novas[0].nome}.`);
+    else avisar(vinculo.tipo === 'missao' ? 'Memória guardada na missão.' : 'Memória guardada no ponto.');
   }
 
   // Controlador do tour de onboarding (ver features/tutorial): abre o sheet direto
@@ -197,7 +193,11 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
         aoFim={aoFimDoTour}
       />
 
-      {estado.tipo === 'scan' && <ScanSheet onFechar={fechar} onSelecionar={aoSelecionarQr} />}
+      {estado.tipo === 'scan' && (
+        <Suspense fallback={null}>
+          <ScanSheet onFechar={fechar} />
+        </Suspense>
+      )}
 
       {estado.tipo === 'npc' && cenaDoNpc(estado.alvo, estado.id)}
 
@@ -212,7 +212,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
           onAdicionarMemoria={() => setEstado({ tipo: 'memoria', vinculo: { tipo: 'missao', id: estado.missaoId } })}
           onFechar={fechar}
           onOuvirNpc={() => setEstado({ tipo: 'npc', alvo: 'missao', id: estado.missaoId })}
-          onConcluida={(r) => setEstado({ tipo: 'recompensa', missaoId: estado.missaoId, recompensa: r.recompensa, xp: r.xp })}
+          onConcluida={(r) => setEstado({ tipo: 'recompensa', missaoId: estado.missaoId, recompensa: r.recompensa, xp: r.xp, novasInsignias: r.novasInsignias })}
         />
       )}
 
@@ -236,6 +236,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
           missaoId={estado.missaoId}
           recompensa={estado.recompensa}
           xp={estado.xp}
+          novasInsignias={estado.novasInsignias}
           onFechar={fechar}
           onDeixarMemoria={() => setEstado({ tipo: 'memoria', vinculo: { tipo: 'missao', id: estado.missaoId } })}
         />
@@ -254,7 +255,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
         <MemoriaForm
           vinculo={estado.vinculo}
           onFechar={() => voltarDaMemoria(estado.vinculo, false)}
-          onSalva={() => voltarDaMemoria(estado.vinculo, true)}
+          onSalva={(novas) => voltarDaMemoria(estado.vinculo, true, novas)}
         />
       )}
     </FluxoContext.Provider>

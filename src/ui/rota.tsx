@@ -6,7 +6,6 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 // O `?s=` (assinatura, RN-FIG-016) é ignorado no protótipo.
 export type Rota =
   | { tipo: 'jornada' }
-  | { tipo: 'qrs' }
   | { tipo: 'missao'; mapaId: string; id: string }
   | { tipo: 'totem'; mapaId: string; id: string };
 
@@ -15,7 +14,6 @@ export const CAMINHO_JORNADA = '/jornada';
 export function lerRota(caminho: string): Rota | null {
   const partes = caminho.split('/').filter(Boolean).map(decodeURIComponent);
   if (partes.length === 1 && partes[0] === 'jornada') return { tipo: 'jornada' };
-  if (partes.length === 1 && partes[0] === 'qrs') return { tipo: 'qrs' };
   if (partes.length === 4 && partes[0] === 'm') {
     const [, mapaId, alvo, id] = partes;
     if (alvo === 'missao') return { tipo: 'missao', mapaId, id };

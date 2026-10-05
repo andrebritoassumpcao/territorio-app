@@ -2,7 +2,7 @@
 
 **Plataforma:** Território (territorio.ai)
 **Produto:** visualização mobile do sistema Território, com a página "Minha jornada" do perfil (participante da campanha Figital)
-**Versão deste documento:** 0.7
+**Versão deste documento:** 0.8
 **Data:** 05/10/2026
 **Fonte de verdade do app como está hoje:** este arquivo
 
@@ -40,10 +40,10 @@ Não precisa de servidor. Abre em `http://localhost:5174` (redireciona para `/jo
 | Parte | Tecnologia | Papel |
 |-------|------------|-------|
 | App | Vite 6 + React 18 + **TypeScript** | Visualização mobile (SPA) |
-| Rotas | History API, sem dependência (`src/ui/rota.tsx`) | `/jornada`, `/qrs`, deep links `/m/...` |
+| Rotas | History API, sem dependência (`src/ui/rota.tsx`) | `/jornada`, deep links `/m/...` |
 | Estado | React Context + `localStorage` | Jornada do participante (`src/store/useAcervo.tsx`) |
-| Dados | Mocks em `src/data/` | Perfil + stats, trilhas, missões, totens, memórias, insígnias, QRs |
-| QR | `qrcode` (mesma lib do mapa) | Gera os QRs da página `/qrs` no cliente |
+| Dados | `src/data/` + Supabase | Perfil (novo usuário) e 4 insígnias de conquista são semente mínima; **missões vêm do mapa** (Supabase); memórias são do usuário (Supabase + local) |
+| QR | `@zxing/browser` (leitura) · `qrcode` (geração, no mapa) | Scanner de câmera no app lê o QR; o mapa gera os QRs |
 | Design | Tokens do mapa (`src/theme/tokens.css`) + shell portado do `style.css` do mapa | Mesmas cores, top bar, sidebar e perfil do Território |
 
 Sem PWA: `vite-plugin-pwa` foi removido. `main.tsx` desregistra service workers antigos que tenham ficado no navegador.
@@ -53,10 +53,10 @@ Estrutura:
 ```
 src/
 ├── theme/tokens.css          # tokens copiados do mapa (cor por entidade)
-├── types.ts                  # Missao, Totem, Memoria, Insignia, Perfil, QrMock…
-├── data/                     # perfil.ts (+ STATS_JORNADA), acervo.ts (seed), qrCodes.ts (QRs mock)
+├── types.ts                  # Missao, Totem, Memoria, Insignia (icone+descricao), Perfil…
+├── data/                     # perfil.ts (novo usuário), acervo.ts (vazio + 4 insígnias)
 │                             #   supabase.ts (client), memorias.ts (upload real), imagem.ts (compressão)
-├── store/useAcervo.tsx       # estado + localStorage (chave v3) + ações (concluir missão, add memória, cena vista, reset)
+├── store/useAcervo.tsx       # estado + localStorage (chave v5) + ações (concluir missão, add memória, desbloquear insígnias, reset)
 ├── ui/
 │   ├── rota.tsx              # roteador mínimo + parser do padrão de URL do mapa
 │   ├── aviso.tsx             # toast ("Em breve", avisos do deep link)
@@ -66,8 +66,7 @@ src/
 └── features/
     ├── jornada/              # MinhaJornada.tsx (a página), PerfilHeader.tsx, rotulos.ts
     ├── npc/                  # Cenario.tsx (paisagens), CenaNpc.tsx (cena de fala, sem figura), OuvirNpc.tsx
-    ├── qrs/QrsDemo.tsx        # página /qrs (QRs de demonstração)
-    ├── scan/ScanSheet.tsx     # scan simulado (plano B da demo)
+    ├── scan/ScanSheet.tsx     # scanner de QR pela câmera (@zxing/browser), carregado sob demanda
     ├── missao/               # MissaoSheet.tsx (executar/enviar), RecompensaSheet.tsx
     ├── totem/TotemSheet.tsx    # info do ponto + "Ouvir de novo"
     └── memoria/MemoriaForm.tsx # deixar memória (foto + comentário + consentimento); foto sobe ao Supabase Storage
@@ -81,7 +80,6 @@ src/
 | `/jornada` | Página Minha jornada dentro do shell |
 | `/m/{mapaId}/missao/{missaoId}` | **Cena de fala** e depois o sheet da missão, sobre Minha jornada. Com Supabase ligado, a missão é **sempre rebuscada** por ID e injetada/atualizada no acervo (traz edições feitas no mapa, preservando o progresso local); missão-semente sem linha no Supabase abre a versão local |
 | `/m/{mapaId}/t/{totemId}` | **Cena de fala** e depois o sheet do totem, sobre Minha jornada |
-| `/qrs` | QRs de demonstração (rota "escondida") |
 | `/mapa` (`/mapa.html`) | **Mapa colaborativo** (autoria de missão + geração de QR); página vanilla + Leaflet, fora do SPA |
 
 O padrão `/m/...` é o mesmo da URL profunda do mapa (§14.1, `gerarUrlQrMissao`/`gerarUrlQr` em `Territorio-map/poc/client/src/figital/model.js`). O `?s=` (assinatura, RN-FIG-016) é **ignorado** no protótipo. O `mapaId` também é ignorado: a busca é pelo id da missão/totem no store.
@@ -91,8 +89,8 @@ O padrão `/m/...` é o mesmo da URL profunda do mapa (§14.1, `gerarUrlQrMissao
 ## 5. Shell do sistema (top bar, sidebar, perfil)
 
 - **Top bar** (do mapa): botão da sidebar, busca (**Em breve**), notificações (**Em breve**), avatar que abre o menu de perfil.
-- **Sidebar** (drawer): logo + Home, Mapa, Manual, Mutirões, Comunidades, Blog. **Mapa** navega para `/mapa.html` (autoria + QR); os demais mostram toast "Em breve".
-- **Menu de perfil** (igual ao do mapa): identidade (Amanda Waller, nível, XP vivo), Minha rede (**Em breve**), Organizações (vazio, **Em breve**), bloco **Minha jornada** só com "Ver minha jornada", Sair (**Em breve**). Os 4 stats estáticos (Saberes/Certificados/Horas/Manuais) foram **removidos** daqui e da página — não faziam sentido para o participante. Só no protótipo, um bloco **Demonstração**: "QRs de demonstração" (→ `/qrs`) e "Reiniciar demo".
+- **Sidebar** (drawer): logo + **Home** (volta para Minha jornada) e **Mapa** (→ `/mapa.html`, autoria + QR). Os demais itens (Manual, Mutirões, Comunidades, Blog) foram **removidos** até existirem nesta visualização.
+- **Menu de perfil** (igual ao do mapa): identidade (**Participante**, nível, XP vivo; avatar por iniciais), Minha rede (**Em breve**), Organizações (vazio, **Em breve**), bloco **Minha jornada** só com "Ver minha jornada", Sair (**Em breve**). Só no protótipo, um bloco **Demonstração** com "Reiniciar demo".
 
 ## 5.1 Tutorial de onboarding (tour guiado com spotlight)
 
@@ -103,9 +101,10 @@ Se o participante entra por **deep link de missão**, a **cena do NPC é adiada*
 ## 6. A página Minha jornada
 
 - Título "Minha jornada".
-- **Perfil:** Amanda Waller, Bacia do Rio Sarapuí, **Nível 12**, barra de XP (2450/3000), contadores de missões e insígnias (vivos).
-- **Dica de scan:** ícone de QR + "Achou um QR de missão ou totem? Aponte a câmera do celular…" + link discreto **"Simular leitura"** (abre a lista de QRs mock — plano B se a câmera/rede falhar).
-- **Seções:** Missões (por fazer), Totens do território, Insígnias, Memórias, Concluídas (aparece após concluir alguma). Cada memória mostra de onde veio num chip: **Missão · …** (verde) ou **Totem · …** (dourado).
+- **Perfil:** novo usuário — **Participante**, Território, **Nível 1**, XP 0, contadores de missões e insígnias (vivos). Sem foto: avatar por **iniciais** (`src/ui/Avatar.tsx`). Nome/nível/XP evoluem conforme a jornada.
+- **Dica de scan:** ícone de QR + texto + botão **"Escanear QR"**, que abre o scanner de câmera no próprio app (ver §10).
+- **Seções:** Missões (por fazer), Insígnias, Memórias, Concluídas (aparece após concluir alguma). O app começa **sem mocks** (missões chegam do mapa por QR; memórias são criadas pelo usuário), então as seções têm estados vazios ("Escaneie um QR de missão para começar…", "Nenhuma memória ainda…"). **Não há mais seção de Totens** (sem fonte de dados no app). Cada memória mostra de onde veio num chip **Missão · …** (verde).
+- **Insígnias (4 conquistas fixas):** "Primeiro passo" (primeiro acesso — já nasce conquistada), "Primeira missão" (ao concluir a 1ª), "Primeira memória" (ao enviar a 1ª) e "Guardião do Território" (ao concluir 3). Desbloqueio por gatilho no store (`concluirMissao`/`adicionarMemoria`), com aviso/toast e exibição na recompensa. Cada badge tem seu ícone; locked fica apagado. Missões **não** geram mais insígnia própria (só XP + a conquista).
 
 ## 7. NPC — a cena de fala (sem figura humana)
 
@@ -119,9 +118,9 @@ Se o participante entra por **deep link de missão**, a **cena do NPC é adiada*
 
 ## 8. Fluxo de missão (cada missão tem seu QR)
 
-Câmera do celular lê o QR (ou "Simular leitura", ou toque no card) → **cena de fala** (§7) → **executar**: registrar cada insumo pedido ("o que coletar", mock) → **enviar** (habilita só com os obrigatórios registrados, RN-FIG-020) → **recompensa**: revela a Insígnia + XP. A fala `ok` aparece como texto, e um botão secundário **"Deixar uma memória deste momento"** abre o formulário já ligado à missão. Ao fechar: a missão vai para **Concluídas**, a Insígnia entra na coleção e a barra de XP sobe (com rollover de nível).
+QR lido pelo **scanner do app** ("Escanear QR") ou pela câmera nativa (deep link), ou toque no card → **cena de fala** (§7) → **executar**: registrar cada insumo pedido ("o que coletar", mock) → **enviar** (habilita só com os obrigatórios registrados, RN-FIG-020) → **recompensa**: XP + a comemoração (texto `recompensa` da missão) e, na **1ª missão**, a conquista "Primeira missão". A fala `ok` aparece como texto, e um botão secundário **"Deixar uma memória deste momento"** abre o formulário. Ao fechar: a missão vai para **Concluídas** e a barra de XP sobe (com rollover de nível). Missões **não** geram insígnia própria — a coleção são as 4 conquistas fixas (§6).
 
-**Memórias da missão (RN-MEM-004):** o sheet da missão tem a seção **"Memórias desta missão"** (lista das memórias ligadas a ela) e o botão **"Adicionar memória"**, disponível a qualquer momento (aberta ou concluída), quantas vezes quiser. É livre: **não conta** para "O que coletar" nem para liberar o envio. O formulário mostra o vínculo travado ("Na missão …"), como no mapa, e a data é a do dia. Ao salvar — ou cancelar — volta para a mesma missão com os itens já registrados intactos (os registros vivem no `fluxo.tsx` enquanto o fluxo está aberto) e o aviso "Memória guardada na missão.". A semente já traz uma memória na **Horta Comunitária** para a lista não nascer vazia.
+**Memórias da missão (RN-MEM-004):** o sheet da missão tem a seção **"Memórias desta missão"** (lista das memórias ligadas a ela) e o botão **"Adicionar memória"**, disponível a qualquer momento (aberta ou concluída), quantas vezes quiser. É livre: **não conta** para "O que coletar" nem para liberar o envio. O formulário mostra o vínculo travado ("Na missão …"), como no mapa, e a data é a do dia. Ao salvar — ou cancelar — volta para a mesma missão com os itens já registrados intactos (os registros vivem no `fluxo.tsx` enquanto o fluxo está aberto) e o aviso "Memória guardada na missão." (ou, se desbloqueou, "Nova insígnia: …"). Sem memória-semente: a lista começa vazia.
 
 ## 8.1 Formulário (um insumo da missão)
 
@@ -135,9 +134,9 @@ No mapa, o popup da missão ganha a aba **"Respostas (N)"** — visível **só l
 
 QR do totem (câmera, simulação ou card) → **cena de fala** (§7) → **totem**: curiosidade do ponto + "Ouvir de novo" + memórias já deixadas ali → **deixar memória**: foto opcional + comentário + **consentimento de exibição pública** (checkbox obrigatório) → salva na jornada (aparece no topo de Memórias) e fecha, com o aviso "Memória guardada no ponto.". A foto sobe ao Supabase Storage (Fase 1), mas memória de **totem** fica só no app — não vai para o mapa nesta fase.
 
-## 10. QRs de demonstração (`/qrs`)
+## 10. Escanear QR pela câmera (`src/features/scan/ScanSheet.tsx`)
 
-Página pensada para notebook/projetor: um cartão por item de `QRS_MOCK` (3 missões, 2 totens), com o QR gerado no cliente para `{origem atual}/{codigo}` — ou seja, no Vercel o QR aponta para o próprio domínio publicado. Em `localhost` mostra um alerta (o celular não alcança esse endereço). Os QRs reais gerados pelo mapa usam o domínio `app.territorio.ai` e IDs próprios, que não batem com os mocks — por isso a demo usa estes.
+O botão **"Escanear QR"** da Minha jornada abre um **scanner de câmera** no próprio app: `getUserMedia` + **`@zxing/browser`** (`BrowserQRCodeReader.decodeFromConstraints`, câmera traseira). Ao ler um QR do Território (URL `/m/{mapa}/missao|t/{id}`), extrai o caminho e chama `navegar(pathname)` — o **mesmo deep link** da câmera nativa (a cena do NPC + o sheet abrem via `ui/fluxo`). Fallback: câmera negada/indisponível → mensagem orientando apontar a câmera nativa do celular para o QR; QR fora do padrão → aviso. O componente é **carregado sob demanda** (`React.lazy`) para manter a lib fora do bundle inicial. **Não há mais** a página `/qrs` nem a lista "Simular leitura" (QRS_MOCK removido).
 
 ## 11. Design system
 
@@ -146,10 +145,11 @@ Tokens copiados 1:1 do mapa (`Territorio-map/poc/client/src/style.css`): fundo `
 ## 12. Limitações conscientes (protótipo)
 
 - Sem login real do participante; o estado da jornada vive em `localStorage` (por dispositivo/navegador). **Exceções que já usam o Supabase:** missões (handoff do mapa), respostas de formulário e, desde a Fase 1 do upload real, as **fotos das memórias** (Storage) + a tabela `memorias`.
-- Captura de insumo é simulada (botão "Registrar"), sem câmera/áudio/GPS reais.
-- A leitura do QR é da câmera nativa do celular (fora do app); não há leitor de QR dentro da página.
+- Captura de insumo é simulada (botão "Registrar"), sem câmera/áudio/GPS reais (a foto de insumo real é a Fase 2, pendente).
+- Leitura de QR: **scanner de câmera dentro do app** (`@zxing/browser`) **e** a câmera nativa do celular (deep link). Em desktop sem webcam / câmera negada, o scanner mostra o fallback.
 - Assinatura `?s=` e `mapaId` do deep link não são validados.
 - NPC com roteiro fixo, sem áudio nem IA; uma única personagem para todos os pontos.
+- Sem seção de Totens no app (sem fonte de dados); totens existem só no mapa.
 - Só Minha jornada funciona; os demais itens do shell são "Em breve".
 - Sem sincronização geral do acervo entre dispositivos. Exceção: as memórias de missão enviadas **aparecem no mapa interno** (tabela `memorias`, leitura pública). Fotos de **insumo** de missão (admin-only) são Fase 2, ainda pendente.
 - Sem testes automatizados, linter ou CI.

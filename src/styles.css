@@ -214,12 +214,14 @@ ul { list-style: none; }
 }
 .jornada-stat .profile-stat-label { line-height: 1.2; }
 .dica-scan {
-  display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4);
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-4);
   padding: var(--space-3); border: 1px dashed var(--primary-border); border-radius: var(--radius-md);
   background: var(--primary-light);
 }
-.dica-scan__avatar { width: 52px; height: 52px; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(31, 122, 76, 0.2); }
-.dica-scan__texto { flex: 1; font-size: 0.82rem; color: var(--primary-hover); line-height: 1.35; }
+.dica-scan__avatar { width: 52px; height: 52px; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(31, 122, 76, 0.2); flex: none; }
+.dica-scan__texto { flex: 1; min-width: 150px; font-size: 0.82rem; color: var(--primary-hover); line-height: 1.35; }
+/* Botão "Escanear QR": ocupa a linha inteira abaixo do texto (não espreme a dica). */
+.dica-scan .botao-primario { flex: 1 1 100%; justify-content: center; }
 .dica-scan .botao-texto { color: var(--primary-hover); text-decoration: underline; white-space: nowrap; flex-shrink: 0; }
 
 /* ==========================================================================
@@ -526,6 +528,24 @@ ul { list-style: none; }
 .foto-acoes { display: flex; gap: var(--space-2); }
 .foto-acao { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 var(--space-3); border: 1px solid var(--color-border-default); border-radius: var(--radius-md); background: var(--color-bg-surface); color: var(--color-memoria-fg); font-size: 0.9rem; font-weight: 600; font-family: inherit; cursor: pointer; }
 .foto-acao:active { background: var(--color-memoria-soft); }
+
+/* Avatar com iniciais (novo usuário sem foto) */
+.avatar-iniciais { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--color-missao); color: #fff; font-weight: 700; line-height: 1; flex: none; }
+
+/* CTA pequeno (ex.: Escanear QR na dica de scan) */
+.botao-primario--sm { width: auto; min-height: 40px; padding: 0 var(--space-4); font-size: 0.92rem; gap: 6px; }
+
+/* Scanner de QR (câmera) */
+.scanner { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+.scanner__palco { position: relative; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: #000; }
+.scanner__video { display: block; width: 100%; max-height: 60vh; aspect-ratio: 3 / 4; object-fit: cover; }
+.scanner__mira { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 62%; aspect-ratio: 1; border: 3px solid rgba(255,255,255,0.9); border-radius: var(--radius-md); pointer-events: none; }
+.scanner__dica { font-size: 0.9rem; color: var(--color-text-secondary); text-align: center; }
+.scanner-erro { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; color: var(--color-text-secondary); padding: var(--space-4) 0; }
+
+/* Insígnia desbloqueada na tela de recompensa */
+.recompensa__badges { display: flex; flex-direction: column; gap: 4px; margin-top: var(--space-2); }
+.recompensa__badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.92rem; color: var(--color-game-xp); }
 .campo { display: flex; flex-direction: column; gap: 6px; }
 .campo__label { font-size: 0.78rem; font-weight: 600; color: var(--color-text-secondary); }
 .campo input, .campo textarea { width: 100%; padding: var(--space-3); border: 1px solid var(--color-border-default); border-radius: var(--radius-md); font-size: 1rem; font-family: inherit; background: var(--color-bg-surface); color: var(--color-text-primary); resize: vertical; }

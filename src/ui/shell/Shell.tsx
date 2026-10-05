@@ -1,6 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { useAcervo } from '../../store/useAcervo';
 import Icone from '../Icone';
+import Avatar from '../Avatar';
 import { useAviso } from '../aviso';
 import PerfilMenu from './PerfilMenu';
 import Sidebar from './Sidebar';
@@ -68,7 +69,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               aria-controls="profile-menu"
               onClick={() => setMenuAberto((v) => !v)}
             >
-              <img className="avatar-photo" src={perfil.avatar} alt="" width={36} height={36} />
+              <Avatar className="avatar-photo" nome={perfil.nome} avatar={perfil.avatar} tamanho={36} />
             </button>
             {menuAberto && <PerfilMenu onFechar={fecharMenu} />}
           </div>

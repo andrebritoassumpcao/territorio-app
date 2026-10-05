@@ -1,6 +1,7 @@
-// Modelo do protótipo (mockado). Espelha as formas usadas no mapa
+// Modelo do protótipo. Espelha as formas usadas no mapa
 // (Territorio-map/poc/client/src/app.js) e as regras do Figital
-// (docs/referencia-mapa/CAMPANHA_FIGITAL.md). Sem backend: só o que a demo precisa.
+// (docs/referencia-mapa/CAMPANHA_FIGITAL.md).
+import type { NomeIcone } from './ui/Icone';
 
 export type CategoriaMissao =
   | 'recursos-hidricos'
@@ -122,8 +123,11 @@ export interface Trilha {
 export interface Insignia {
   id: string;
   nome: string;
+  /** Como desbloquear (texto curto mostrado na jornada). */
+  descricao: string;
+  /** Ícone da medalha (nome em src/ui/Icone). */
+  icone: NomeIcone;
   conquistada: boolean;
-  missaoId: string | null;
 }
 
 export interface Perfil {
@@ -133,12 +137,4 @@ export interface Perfil {
   xp: number;
   xpProximoNivel: number;
   avatar: string;
-}
-
-/** Um QR mockado que o "scanner" pode ler. Aponta para uma missão ou um totem. */
-export interface QrMock {
-  codigo: string; // ex.: m/serra-do-vulcao/missao/nascente
-  alvo: 'missao' | 'totem';
-  refId: string;
-  rotulo: string; // texto amigável na lista de "scan"
 }
