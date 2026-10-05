@@ -1077,6 +1077,12 @@
       </div>
     </div>
 
+    <!-- Lightbox da foto da memória (amplia sem sair da aba, fundo com blur) -->
+    <div class="memory-lightbox" id="memory-lightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada" hidden>
+      <button type="button" class="memory-lightbox-close" id="memory-lightbox-close" aria-label="Fechar foto ampliada">&times;</button>
+      <img class="memory-lightbox-img" id="memory-lightbox-img" src="" alt="Foto da memória ampliada" />
+    </div>
+
     <!-- Confirmação de exclusão -->
     <div class="confirm-backdrop hidden" id="confirm-delete" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-message">
       <div class="confirm-card">
