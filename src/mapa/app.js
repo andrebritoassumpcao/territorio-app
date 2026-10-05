@@ -519,15 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function memoryPanelHtml(kind, data) {
     const memorias = data.memorias || [];
     const addBtn = `<button type="button" class="card-btn card-btn-purple" data-requires-auth onclick="openCreateMemoryFor('${kind}','${escapeJsString(data.id)}')">Adicionar memória</button>`;
-    if (!memorias.length) {
-      return `
-        <div class="card-memory-empty">
-          <p class="card-memory-empty-title">Nenhuma memória ainda</p>
-          <p class="card-memory-empty-text">Guarde fotos e relatos deste lugar.</p>
-          ${addBtn}
-        </div>
-      `;
-    }
     const items = memorias.map((m, i) => `
       <button type="button" class="card-memory-item" onclick="openParentMemory('${kind}','${escapeJsString(data.id)}',${i})">
         <img src="${m.fotoUrl}" alt="" class="card-memory-thumb" onerror="this.onerror=null; this.src='${fallbackImg}';" />
@@ -537,10 +528,16 @@ document.addEventListener('DOMContentLoaded', () => {
         </span>
       </button>
     `).join('');
-    return `
-      <div class="card-memory-list">${items}</div>
-      ${addBtn}
-    `;
+    const lista = memorias.length ? `<div class="card-memory-list">${items}</div>` : '';
+    // Memórias enviadas pela jornada (app) chegam do Supabase (tabela `memorias`),
+    // carregadas sob demanda por window.carregarMemorias. Leitura pública (sem login).
+    const remoto = `<div class="card-memory-list" id="remote-mem-${data.id}"></div>`;
+    const vazio = `
+      <div class="card-memory-empty" id="mem-empty-${data.id}"${memorias.length ? ' hidden' : ''}>
+        <p class="card-memory-empty-title">Nenhuma memória ainda</p>
+        <p class="card-memory-empty-text">Guarde fotos e relatos deste lugar.</p>
+      </div>`;
+    return `${lista}${remoto}${vazio}${addBtn}`;
   }
 
   function missaoSobreInner(data) {
@@ -734,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (panel) panel.hidden = !ativo;
     });
     if (tab === 'respostas') window.carregarRespostas(id);
+    if (tab === 'memorias') window.carregarMemorias(id);
     const popup = parentById.get(id)?.marker.getPopup();
     if (popup && popup._map) {
       popup._updateLayout();
@@ -783,6 +781,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const entry = parentById.get(id);
     const item = entry?.data.memorias?.[index];
     if (item) openMemoryModal(item, { kind, id });
+  };
+
+  // Memórias enviadas pela jornada (app) — tabela `memorias` no Supabase.
+  // Leitura PÚBLICA (sem login): aparecem no popup da missão. Só missão por ora
+  // (totem fica de fora: ids de totem do app × do mapa não se cruzam). O admin
+  // logado ganha um botão de apagar (RLS: delete autenticado).
+  const memoriasRemotasPorId = new Map(); // missaoId -> [memórias mapeadas]
+
+  function mapearMemoriaRemota(row) {
+    return {
+      id: row.id,
+      titulo: row.titulo || 'Memória sem título',
+      autor: row.autor || 'Anônimo',
+      data: row.created_at ? String(row.created_at).slice(0, 10) : '',
+      fotoUrl: row.foto_url || fallbackImg,
+      descricao: row.descricao || '',
+      comentarios: []
+    };
+  }
+
+  window.carregarMemorias = async function(missaoId) {
+    const painel = document.getElementById('remote-mem-' + missaoId);
+    if (!painel || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('memorias')
+        .select('id, titulo, descricao, autor, foto_url, created_at')
+        .eq('missao_id', missaoId)
+        .order('created_at', { ascending: false });
+      if (error || !data) return;
+      const memorias = data.map(mapearMemoriaRemota);
+      memoriasRemotasPorId.set(missaoId, memorias);
+      painel.innerHTML = memorias.map((m, i) => `
+        <div class="card-memory-item-wrap" style="position:relative;">
+          <button type="button" class="card-memory-item" style="width:100%" onclick="openRemoteMemory('${escapeJsString(missaoId)}',${i})">
+            <img src="${m.fotoUrl}" alt="" class="card-memory-thumb" onerror="this.onerror=null; this.src='${fallbackImg}';" />
+            <span class="card-memory-copy">
+              <span class="card-memory-title">${escapeHtml(m.titulo)}</span>
+              <span class="card-memory-date">${escapeHtml(formatMemoryDate(m.data))}</span>
+            </span>
+          </button>
+          ${isAuthenticated ? `<button type="button" title="Apagar memória" aria-label="Apagar memória" onclick="apagarMemoria('${escapeJsString(m.id)}','${escapeJsString(missaoId)}')" style="position:absolute; top:6px; right:6px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:14px; line-height:1; cursor:pointer;">×</button>` : ''}
+        </div>
+      `).join('');
+
+      // Esconde o "nenhuma memória" se há conteúdo (local ou remoto) e atualiza o badge.
+      const entry = parentById.get(missaoId);
+      const totalLocal = entry?.data.memorias?.length || 0;
+      const total = totalLocal + memorias.length;
+      const vazio = document.getElementById('mem-empty-' + missaoId);
+      if (vazio) vazio.hidden = total > 0;
+      const tabBtn = document.getElementById('tab-memorias-' + missaoId);
+      if (tabBtn) tabBtn.innerHTML = `Memórias${total ? ` <span class="card-tab-badge">${total}</span>` : ''}`;
+    } catch (e) {
+      /* silencioso: mantém o que já está no painel */
+    }
+  };
+
+  window.openRemoteMemory = function(missaoId, index) {
+    const item = memoriasRemotasPorId.get(missaoId)?.[index];
+    if (item) openMemoryModal(item, { kind: 'missao', id: missaoId });
+  };
+
+  window.apagarMemoria = async function(id, missaoId) {
+    if (!supabase || !isAuthenticated) return;
+    if (!window.confirm('Apagar esta memória? Esta ação não pode ser desfeita.')) return;
+    const { error } = await supabase.from('memorias').delete().eq('id', id);
+    if (error) { window.showToast && window.showToast('Não foi possível apagar a memória.'); return; }
+    window.carregarMemorias(missaoId);
   };
 
   const memoryModal = document.getElementById('memory-modal');
@@ -1002,6 +1069,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardId = card?.getAttribute('data-card-id');
     if (cardId && root.querySelector('#panel-respostas-' + cardId)) {
       window.carregarRespostas(cardId);
+    }
+    // Memórias públicas enviadas pela jornada (app): preenche a aba/badge logo ao abrir.
+    if (cardId && root.querySelector('#remote-mem-' + cardId)) {
+      window.carregarMemorias(cardId);
     }
   });
 

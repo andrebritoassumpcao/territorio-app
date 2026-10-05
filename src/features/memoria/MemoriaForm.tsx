@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useAcervo } from '../../store/useAcervo';
+import { salvarMemoria } from '../../data/memorias';
 import type { VinculoMemoria } from '../../types';
 
 interface Props {
@@ -12,35 +13,68 @@ interface Props {
 
 // Deixar uma memória (foto opcional + comentário) ligada a uma missão ou a um
 // totem (RN-MEM-004). Como no mapa, o vínculo vem de onde o fluxo partiu e fica
-// travado. Mockado: a foto vira um dataURL local só para pré-visualização.
+// travado. Fase 1 do upload real: a foto é comprimida e sobe para o Supabase
+// Storage (bucket público `memorias`), e a memória grava na tabela `memorias`
+// para aparecer no mapa. Em paralelo, guardamos uma cópia local (otimista) em
+// `localStorage`, para a jornada do participante funcionar na hora e offline.
 export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
-  const { missoes, totens, adicionarMemoria } = useAcervo();
+  const { missoes, totens, perfil, adicionarMemoria } = useAcervo();
   const missao = vinculo.tipo === 'missao' ? missoes.find((m) => m.id === vinculo.id) : undefined;
   const totem = vinculo.tipo === 'totem' ? totens.find((t) => t.id === vinculo.id) : undefined;
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [foto, setFoto] = useState<string | null>(null);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [consentido, setConsentido] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const inputFoto = useRef<HTMLInputElement>(null);
 
   function escolherFoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    if (!arquivo) return;
+    const selecionado = e.target.files?.[0];
+    if (!selecionado) return;
+    setArquivo(selecionado);
     const leitor = new FileReader();
     leitor.onload = () => setFoto(typeof leitor.result === 'string' ? leitor.result : null);
-    leitor.readAsDataURL(arquivo);
+    leitor.readAsDataURL(selecionado);
   }
 
-  function salvar(e: React.FormEvent) {
+  async function salvar(e: React.FormEvent) {
     e.preventDefault();
-    adicionarMemoria({
-      missaoId: vinculo.tipo === 'missao' ? vinculo.id : null,
-      totemId: vinculo.tipo === 'totem' ? vinculo.id : null,
+    if (enviando) return;
+    setEnviando(true);
+
+    const missaoId = vinculo.tipo === 'missao' ? vinculo.id : null;
+    const totemId = vinculo.tipo === 'totem' ? vinculo.id : null;
+
+    // Upload real (best-effort): comprime a foto, sobe ao Storage e grava a linha.
+    const resultado = await salvarMemoria({
+      missaoId,
+      totemId,
       titulo,
       descricao,
-      foto
+      autor: perfil.nome,
+      arquivo,
+      consentido
     });
+    if (!resultado.ok && resultado.message) {
+      // Sem Supabase ou falha de rede: segue só com a cópia local (dataURL).
+      console.warn('[memoria] upload não concluído:', resultado.message);
+    }
+
+    // Cópia local otimista: usa a URL pública quando houve upload; senão, o dataURL.
+    adicionarMemoria({
+      missaoId,
+      totemId,
+      titulo,
+      descricao,
+      foto: resultado.fotoUrl ?? foto
+    });
+
+    setEnviando(false);
     onSalva();
   }
+
+  const podeSalvar = (titulo.trim() !== '' || descricao.trim() !== '') && consentido && !enviando;
 
   return (
     <Sheet aberto onFechar={onFechar} titulo="Deixar memória" cor="var(--color-memoria)">
@@ -93,8 +127,17 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
           />
         </label>
 
-        <button type="submit" className="botao-primario botao-primario--memoria" disabled={!titulo.trim() && !descricao.trim()}>
-          Salvar na jornada
+        <label className="campo-consentimento">
+          <input
+            type="checkbox"
+            checked={consentido}
+            onChange={(e) => setConsentido(e.target.checked)}
+          />
+          <span>Autorizo exibir esta memória publicamente no mapa do Território.</span>
+        </label>
+
+        <button type="submit" className="botao-primario botao-primario--memoria" disabled={!podeSalvar}>
+          {enviando ? 'Salvando…' : 'Salvar na jornada'}
         </button>
       </form>
     </Sheet>
