@@ -440,19 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // (B) MUTIRÕES (🤝 Laranja) — sem pontos por enquanto
   const mutiroesData = [];
 
-  // (C) MEMÓRIAS (📷 Roxo)
-  const extraFotos = [
-    'https://images.unsplash.com/photo-1466692476866-aef1dfb1d5ea?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1591857177580-dc84b9c4b8b2?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?auto=format&fit=crop&w=600&q=80'
-  ];
-
-  function attachFotos(item) {
-    item.fotos = [item.fotoUrl, ...extraFotos];
-    return item;
-  }
-
+  // (C) MEMÓRIAS (📷 Roxo) — sem fotos mock: a memória mostra só a foto enviada.
   const memoriasData = [];
 
   // (D) MARCADORES (📍 Vermelho/Teal) — sem pontos por enquanto
@@ -900,8 +888,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (titleEl) titleEl.textContent = item.titulo;
     if (descEl) descEl.textContent = item.descricao;
 
-    const fotos = item.fotos || [item.fotoUrl];
+    // A memória tem só uma foto real (a enviada): usamos sempre fotoUrl. Isso
+    // também saneia memórias antigas salvas no snapshot com fotos mock no array.
+    const fotos = [item.fotoUrl].filter(Boolean);
     if (memoryThumbs) {
+      // Com uma única foto, a tira de miniaturas não agrega nada: some.
+      memoryThumbs.style.display = fotos.length > 1 ? '' : 'none';
       memoryThumbs.innerHTML = fotos.map((src, i) => `
         <button type="button" class="memory-thumb${i === 0 ? ' active' : ''}" data-index="${i}">
           <img src="${src}" alt="Miniatura ${i + 1}" onerror="this.onerror=null; this.src='${fallbackImg}';" />
@@ -941,6 +933,35 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === memoryModal) closeMemoryModal();
     });
   }
+
+  // Lightbox: ampliar a foto da memória sem sair da aba, com o entorno em blur.
+  const memoryLightbox = document.getElementById('memory-lightbox');
+  const memoryLightboxImg = document.getElementById('memory-lightbox-img');
+  const memoryLightboxClose = document.getElementById('memory-lightbox-close');
+  function openLightbox(src) {
+    if (!memoryLightbox || !memoryLightboxImg || !src) return;
+    memoryLightboxImg.src = src;
+    memoryLightbox.hidden = false;
+  }
+  function closeLightbox() {
+    if (memoryLightbox) memoryLightbox.hidden = true;
+  }
+  if (memoryFeatured) {
+    memoryFeatured.addEventListener('click', () => openLightbox(memoryFeatured.src));
+  }
+  if (memoryLightboxClose) memoryLightboxClose.addEventListener('click', closeLightbox);
+  if (memoryLightbox) {
+    // Clicar no fundo (fora da imagem) fecha; clicar na imagem, não.
+    memoryLightbox.addEventListener('click', (e) => {
+      if (e.target !== memoryLightboxImg) closeLightbox();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && memoryLightbox && !memoryLightbox.hidden) {
+      e.stopPropagation();
+      closeLightbox();
+    }
+  }, true);
 
   const memorySendBtn = document.getElementById('memory-send-btn');
   if (memorySendBtn) {
@@ -2618,7 +2639,7 @@ document.addEventListener('DOMContentLoaded', () => {
             existing.descricao = vinculoFrase;
             if (loadedMemoriaPhoto) {
               existing.fotoUrl = loadedMemoriaPhoto;
-              existing.fotos = [loadedMemoriaPhoto, ...(existing.fotos || []).slice(1)];
+              existing.fotos = [loadedMemoriaPhoto];
             }
             const pin = findMapItem('memoria', existing.id);
             if (pin) refreshPinAppearance(pin);
@@ -2633,7 +2654,7 @@ document.addEventListener('DOMContentLoaded', () => {
             data: memoriaData,
             fotoUrl: photoSrc,
             descricao: vinculoFrase,
-            fotos: [photoSrc, ...extraFotos],
+            fotos: [photoSrc],
             comentarios: []
           };
 

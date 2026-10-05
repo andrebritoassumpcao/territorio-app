@@ -2250,8 +2250,13 @@ input[type="color"]::-webkit-color-swatch {
   width: 100%;
   height: 180px;
   border-radius: var(--radius-md);
-  object-fit: cover;
+  /* contain: mostra a foto inteira, centralizada, sem cortar nem estourar o quadro
+     (ex.: logos/imagens pequenas não ficam ampliadas e vazando). */
+  object-fit: contain;
+  object-position: center;
+  background: var(--color-memoria-soft);
   display: block;
+  cursor: zoom-in;
 }
 
 .memory-thumbs {
@@ -2279,6 +2284,54 @@ input[type="color"]::-webkit-color-swatch {
 
 .memory-thumb.active {
   border: 2px solid var(--color-memoria-fg);
+}
+
+/* Lightbox: amplia a foto da memória sobre a tela, sem sair da aba, com o
+   entorno desfocado (blur). Clicar fora ou no X (ou Esc) fecha. */
+.memory-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 20, 0.55);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  cursor: zoom-out;
+  animation: memory-lightbox-in 0.16s ease;
+}
+.memory-lightbox[hidden] { display: none; }
+.memory-lightbox-img {
+  max-width: min(92vw, 1100px);
+  max-height: 86vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  cursor: default;
+}
+.memory-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.memory-lightbox-close:hover { background: rgba(0, 0, 0, 0.7); }
+@keyframes memory-lightbox-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .memory-description {
