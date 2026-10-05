@@ -2,8 +2,8 @@
 
 **Plataforma:** Território (territorio.ai)
 **Produto:** visualização mobile do sistema Território, com a página "Minha jornada" do perfil (participante da campanha Figital)
-**Versão deste documento:** 0.6
-**Data:** 30/09/2026
+**Versão deste documento:** 0.7
+**Data:** 05/10/2026
 **Fonte de verdade do app como está hoje:** este arquivo
 
 > Sempre que uma funcionalidade for adicionada, alterada ou removida, este documento deve ser atualizado na mesma entrega. Ver `.cursor/rules/atualizar-documentacao-atual.mdc`.
@@ -18,6 +18,8 @@
 - **`mapa.html`** — o **mapa colaborativo** do `Territorio-map` embutido como está (**JS vanilla + Leaflet**, desktop), para **autorar missões e gerar QR**. Ver `docs/MIGRACAO_MAPA.md`.
 
 A ideia central da demo (handoff por QR, **só missões**): no mapa, o autor cria uma missão e gera o QR; um **segundo aparelho** lê o QR, abre o site e o app **recebe a missão e roda o fluxo** (cena de fala → executar → enviar → recompensa). A missão trafega por uma tabela **`missoes` no Supabase** (o QR carrega só o ID). Deixou de ser "100% mockado": **missões persistem no Supabase** (projeto leve, reutilizado do mapa); o resto do acervo do participante segue em `localStorage`.
+
+**Upload real de memórias (Fase 1, 05/10/2026):** quando o participante deixa uma memória (foto opcional + comentário), a foto é **comprimida no cliente** e **sobe para o Supabase Storage** (bucket público `memorias`), e a memória é gravada na tabela **`memorias`**. No mapa interno (`mapa.html`), o popup da missão exibe essas memórias **publicamente** (aba "Memórias", sem login); o admin logado pode **apagá-las**. É upload **best-effort**: sem Supabase configurado, cai no comportamento antigo (foto só como dataURL local). O participante sempre mantém uma **cópia local otimista** no `localStorage`. **Só missão** por ora — memória ligada a totem fica só no app (os ids de totem do app e do mapa ainda não se cruzam). A foto de **insumo** da missão (quando a missão pede "tirar foto"), com visibilidade **só para o admin**, é a **Fase 2** (ainda não implementada; captura de insumo segue simulada).
 
 > As demais Fases da API Figital (manifesto/offline, painel, assinatura HMAC) seguem **suspensas**; o contrato continua em `docs/CONTRATO_API_FIGITAL.md`. Sem figuras humanas (decisão do CEO): a personagem Tainá foi removida; a cena de fala mostra só a paisagem e o diálogo.
 
@@ -53,6 +55,7 @@ src/
 ├── theme/tokens.css          # tokens copiados do mapa (cor por entidade)
 ├── types.ts                  # Missao, Totem, Memoria, Insignia, Perfil, QrMock…
 ├── data/                     # perfil.ts (+ STATS_JORNADA), acervo.ts (seed), qrCodes.ts (QRs mock)
+│                             #   supabase.ts (client), memorias.ts (upload real), imagem.ts (compressão)
 ├── store/useAcervo.tsx       # estado + localStorage (chave v3) + ações (concluir missão, add memória, cena vista, reset)
 ├── ui/
 │   ├── rota.tsx              # roteador mínimo + parser do padrão de URL do mapa
@@ -67,7 +70,7 @@ src/
     ├── scan/ScanSheet.tsx     # scan simulado (plano B da demo)
     ├── missao/               # MissaoSheet.tsx (executar/enviar), RecompensaSheet.tsx
     ├── totem/TotemSheet.tsx    # info do ponto + "Ouvir de novo"
-    └── memoria/MemoriaForm.tsx # deixar memória (foto + comentário) ligada a missão ou totem
+    └── memoria/MemoriaForm.tsx # deixar memória (foto + comentário + consentimento); foto sobe ao Supabase Storage
 ```
 
 ## 4. Rotas
@@ -130,7 +133,7 @@ No mapa, o popup da missão ganha a aba **"Respostas (N)"** — visível **só l
 
 ## 9. Fluxo de totem (informacional)
 
-QR do totem (câmera, simulação ou card) → **cena de fala** (§7) → **totem**: curiosidade do ponto + "Ouvir de novo" + memórias já deixadas ali → **deixar memória**: foto opcional + comentário, vínculo "No ponto …" → salva na jornada (aparece no topo de Memórias) e fecha, com o aviso "Memória guardada no ponto.".
+QR do totem (câmera, simulação ou card) → **cena de fala** (§7) → **totem**: curiosidade do ponto + "Ouvir de novo" + memórias já deixadas ali → **deixar memória**: foto opcional + comentário + **consentimento de exibição pública** (checkbox obrigatório) → salva na jornada (aparece no topo de Memórias) e fecha, com o aviso "Memória guardada no ponto.". A foto sobe ao Supabase Storage (Fase 1), mas memória de **totem** fica só no app — não vai para o mapa nesta fase.
 
 ## 10. QRs de demonstração (`/qrs`)
 
@@ -142,13 +145,13 @@ Tokens copiados 1:1 do mapa (`Territorio-map/poc/client/src/style.css`): fundo `
 
 ## 12. Limitações conscientes (protótipo)
 
-- Sem backend, sem rede, sem login real; estado só em `localStorage` (por dispositivo/navegador).
+- Sem login real do participante; o estado da jornada vive em `localStorage` (por dispositivo/navegador). **Exceções que já usam o Supabase:** missões (handoff do mapa), respostas de formulário e, desde a Fase 1 do upload real, as **fotos das memórias** (Storage) + a tabela `memorias`.
 - Captura de insumo é simulada (botão "Registrar"), sem câmera/áudio/GPS reais.
 - A leitura do QR é da câmera nativa do celular (fora do app); não há leitor de QR dentro da página.
 - Assinatura `?s=` e `mapaId` do deep link não são validados.
 - NPC com roteiro fixo, sem áudio nem IA; uma única personagem para todos os pontos.
 - Só Minha jornada funciona; os demais itens do shell são "Em breve".
-- Sem sincronização, sem envio ao painel do mapa, sem múltiplos usuários.
+- Sem sincronização geral do acervo entre dispositivos. Exceção: as memórias de missão enviadas **aparecem no mapa interno** (tabela `memorias`, leitura pública). Fotos de **insumo** de missão (admin-only) são Fase 2, ainda pendente.
 - Sem testes automatizados, linter ou CI.
 
 ---
