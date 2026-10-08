@@ -2,7 +2,9 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { useAcervo } from '../../store/useAcervo';
 import Icone from '../Icone';
 import Avatar from '../Avatar';
+import SeletorIdioma from '../SeletorIdioma';
 import { useAviso } from '../aviso';
+import { useT } from '../../i18n/I18nProvider';
 import PerfilMenu from './PerfilMenu';
 import Sidebar from './Sidebar';
 
@@ -12,6 +14,7 @@ import Sidebar from './Sidebar';
 export default function Shell({ children }: { children: ReactNode }) {
   const { perfil } = useAcervo();
   const avisar = useAviso();
+  const { t } = useT();
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const fecharSidebar = useCallback(() => setSidebarAberta(false), []);
@@ -24,8 +27,8 @@ export default function Shell({ children }: { children: ReactNode }) {
           type="button"
           className="btn-icon"
           onClick={() => setSidebarAberta(true)}
-          title="Abrir menu"
-          aria-label="Abrir menu"
+          title={t('shell.openMenu')}
+          aria-label={t('shell.openMenu')}
           aria-expanded={sidebarAberta}
         >
           <Icone nome="panel-left" tamanho={20} />
@@ -36,24 +39,25 @@ export default function Shell({ children }: { children: ReactNode }) {
           <input
             type="text"
             className="search-input"
-            placeholder="Buscar…"
+            placeholder={t('shell.searchPlaceholder')}
             readOnly
-            aria-label="Buscar (em breve)"
+            aria-label={t('shell.searchAria')}
             onFocus={(e) => {
               e.currentTarget.blur();
-              avisar('Busca: em breve nesta visualização.');
+              avisar(t('shell.searchToast'));
             }}
           />
-          <span className="soon-pill" aria-hidden="true">Em breve</span>
+          <span className="soon-pill" aria-hidden="true">{t('common.comingSoon')}</span>
         </div>
 
         <div className="top-bar-end">
+          <SeletorIdioma />
           <button
             type="button"
             className="btn-icon notification-btn is-soon"
             aria-disabled="true"
-            aria-label="Notificações (em breve)"
-            onClick={() => avisar('Notificações: em breve nesta visualização.')}
+            aria-label={t('shell.notificationsAria')}
+            onClick={() => avisar(t('shell.notificationsToast'))}
           >
             <Icone nome="bell" tamanho={20} />
             <span className="notification-badge" />
@@ -63,8 +67,8 @@ export default function Shell({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="user-profile"
-              title="Perfil"
-              aria-label="Perfil"
+              title={t('shell.profile')}
+              aria-label={t('shell.profile')}
               aria-expanded={menuAberto}
               aria-controls="profile-menu"
               onClick={() => setMenuAberto((v) => !v)}

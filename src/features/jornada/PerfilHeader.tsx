@@ -1,9 +1,11 @@
 import { useAcervo } from '../../store/useAcervo';
 import Avatar from '../../ui/Avatar';
+import { useT } from '../../i18n/I18nProvider';
 
 // Cabeçalho com o perfil do Território e a barra de XP.
 export default function PerfilHeader() {
   const { perfil, insignias, missoes } = useAcervo();
+  const { t } = useT();
   const pct = Math.min(100, Math.round((perfil.xp / perfil.xpProximoNivel) * 100));
   const conquistadas = insignias.filter((i) => i.conquistada).length;
   const feitas = missoes.filter((m) => m.status === 'concluida').length;
@@ -18,7 +20,7 @@ export default function PerfilHeader() {
         </div>
         <div className="perfil__nivel">
           <span className="perfil__nivel-num">{perfil.nivel}</span>
-          <span className="perfil__nivel-rot">Nível</span>
+          <span className="perfil__nivel-rot">{t('profile.level')}</span>
         </div>
       </div>
 
@@ -30,8 +32,8 @@ export default function PerfilHeader() {
       </div>
 
       <div className="perfil__stats">
-        <span><strong>{feitas}</strong> missões</span>
-        <span><strong>{conquistadas}</strong> insígnias</span>
+        <span><strong>{feitas}</strong> {t('journey.profileMissions')}</span>
+        <span><strong>{conquistadas}</strong> {t('journey.profileBadges')}</span>
       </div>
     </header>
   );

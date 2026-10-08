@@ -1,6 +1,7 @@
 import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useAcervo } from '../../store/useAcervo';
+import { useT } from '../../i18n/I18nProvider';
 import type { Insignia } from '../../types';
 
 interface Props {
@@ -19,16 +20,17 @@ interface Props {
 // (§14.2) exibida como texto, quando a missão tem NPC (sem figura humana).
 export default function RecompensaSheet({ missaoId, recompensa, xp, novasInsignias, onFechar, onDeixarMemoria }: Props) {
   const { missoes } = useAcervo();
+  const { t } = useT();
   const npc = missoes.find((m) => m.id === missaoId)?.npc;
   const falaOk = npc?.falas.find((f) => f.id === 'ok');
 
   return (
-    <Sheet aberto onFechar={onFechar} titulo="Recompensa resgatada" cor="var(--color-game-xp)">
+    <Sheet aberto onFechar={onFechar} titulo={t('reward.title')} cor="var(--color-game-xp)">
       <div className="recompensa">
         <div className="recompensa__medalha" aria-hidden="true">
           <Icone nome="trophy" tamanho={40} />
         </div>
-        <p className="recompensa__parabens">Missão concluída!</p>
+        <p className="recompensa__parabens">{t('reward.completed')}</p>
         <p className="recompensa__insignia">{recompensa}</p>
         <p className="recompensa__xp"><Icone nome="sparkles" tamanho={16} /> +{xp} XP</p>
 
@@ -36,7 +38,7 @@ export default function RecompensaSheet({ missaoId, recompensa, xp, novasInsigni
           <div className="recompensa__badges">
             {novasInsignias.map((ins) => (
               <p key={ins.id} className="recompensa__badge">
-                <Icone nome={ins.icone} tamanho={16} /> Nova insígnia: <strong>{ins.nome}</strong>
+                <Icone nome={ins.icone} tamanho={16} /> {t('reward.newBadge')}: <strong>{t(`badge.${ins.id}.nome`)}</strong>
               </p>
             ))}
           </div>
@@ -50,13 +52,13 @@ export default function RecompensaSheet({ missaoId, recompensa, xp, novasInsigni
             </p>
           </div>
         ) : (
-          <p className="recompensa__nota">Guardado na sua jornada no território.</p>
+          <p className="recompensa__nota">{t('reward.savedNote')}</p>
         )}
 
         <button type="button" className="botao-secundario botao-secundario--memoria recompensa__memoria" onClick={onDeixarMemoria}>
-          <Icone nome="camera" tamanho={16} /> Deixar uma memória deste momento
+          <Icone nome="camera" tamanho={16} /> {t('reward.leaveMemory')}
         </button>
-        <button type="button" className="botao-primario" onClick={onFechar}>Ver minha jornada</button>
+        <button type="button" className="botao-primario" onClick={onFechar}>{t('reward.viewJourney')}</button>
       </div>
     </Sheet>
   );
