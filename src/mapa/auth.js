@@ -7,6 +7,7 @@
    ========================================================================== */
 
 import { supabase } from './db.js';
+import { t } from '../i18n/idioma';
 
 // Sem Supabase configurado (dev sem .env.local) o login é pulado.
 export const authEnabled = Boolean(supabase);
@@ -22,17 +23,17 @@ export async function getSession() {
  * @returns {Promise<{ok: boolean, message?: string}>}
  */
 export async function signIn(email, password) {
-  if (!supabase) return { ok: false, message: 'Autenticação indisponível.' };
+  if (!supabase) return { ok: false, message: t('map.login.unavailable') };
   try {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       const invalid = /invalid login credentials/i.test(error.message);
-      return { ok: false, message: invalid ? 'E-mail ou senha inválidos.' : error.message };
+      return { ok: false, message: invalid ? t('map.login.invalid') : error.message };
     }
     return { ok: true };
   } catch (err) {
     console.warn('[auth] signIn (exceção):', err);
-    return { ok: false, message: 'Não foi possível conectar. Tente novamente.' };
+    return { ok: false, message: t('map.login.connectError') };
   }
 }
 

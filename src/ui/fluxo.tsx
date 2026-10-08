@@ -5,6 +5,7 @@ import { buscarMissao } from '../data/missoesRemotas';
 import { dbEnabled } from '../data/supabase';
 import { enviarRespostas } from '../data/respostas';
 import { useAviso } from './aviso';
+import { useT } from '../i18n/I18nProvider';
 import { CAMINHO_JORNADA, useRota } from './rota';
 import MissaoSheet from '../features/missao/MissaoSheet';
 import RecompensaSheet from '../features/missao/RecompensaSheet';
@@ -53,6 +54,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
   const { rota, navegar } = useRota();
   const { perfil, missoes, totens, npcVistos, marcarNpcVisto, adicionarMissao, tutorialVisto, marcarTutorialVisto } = useAcervo();
   const avisar = useAviso();
+  const { t } = useT();
   // Missão buscada no Supabase (autorada no mapa) esperando entrar no store para abrir.
   const [missaoPendente, setMissaoPendente] = useState<string | null>(null);
   // Deep link no primeiro acesso: a cena espera o tour de onboarding terminar.
@@ -96,7 +98,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
       const local = missoes.some((m) => m.id === id);
       if (dbEnabled) {
         // Sempre rebusca a versão mais recente do mapa (traz edições), mesmo com cópia local.
-        if (!local) avisar('Carregando missão…');
+        if (!local) avisar(t('flow.loadingMission'));
         buscarMissao(id).then((m) => {
           if (m) {
             adicionarMissao(m);
@@ -104,18 +106,18 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
           } else if (local) {
             entrar('missao', id); // missão-semente (não vive no Supabase)
           } else {
-            avisar('Missão não encontrada neste protótipo.');
+            avisar(t('flow.missionNotFound'));
           }
         });
       } else if (local) {
         entrar('missao', id);
       } else {
-        avisar('Missão não encontrada neste protótipo.');
+        avisar(t('flow.missionNotFound'));
       }
       navegar(CAMINHO_JORNADA, { substituir: true });
     } else if (rota.tipo === 'totem') {
-      if (totens.some((t) => t.id === rota.id)) entrar('totem', rota.id);
-      else avisar('Totem não encontrado neste protótipo.');
+      if (totens.some((x) => x.id === rota.id)) entrar('totem', rota.id);
+      else avisar(t('flow.totemNotFound'));
       navegar(CAMINHO_JORNADA, { substituir: true });
     }
     // Reage só à mudança de rota; o estado do acervo é lido no momento do deep link.
@@ -150,7 +152,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
         cenario={ponto.cenario}
         alvo={alvo}
         tituloPonto={'titulo' in ponto ? ponto.titulo : ponto.nome}
-        cta={alvo === 'missao' ? 'Começar missão' : 'Explorar o ponto'}
+        cta={alvo === 'missao' ? t('npc.ctaMission') : t('npc.ctaTotem')}
         onConcluir={concluir}
       />
     );
@@ -162,8 +164,8 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
     if (vinculo.tipo === 'missao') setEstado({ tipo: 'missao', missaoId: vinculo.id });
     else fechar();
     if (!salvou) return;
-    if (novas.length) avisar(`Memória guardada! Nova insígnia: ${novas[0].nome}.`);
-    else avisar(vinculo.tipo === 'missao' ? 'Memória guardada na missão.' : 'Memória guardada no ponto.');
+    if (novas.length) avisar(t('flow.memorySavedBadge', { badge: t(`badge.${novas[0].id}.nome`) }));
+    else avisar(vinculo.tipo === 'missao' ? t('flow.memorySavedMission') : t('flow.memorySavedSpot'));
   }
 
   // Controlador do tour de onboarding (ver features/tutorial): abre o sheet direto
@@ -226,7 +228,7 @@ export function FluxoProvider({ children }: { children: ReactNode }) {
             if (!res.ok && res.message) console.warn('[respostas]', res.message);
           });
           voltarAMissao();
-          avisar('Formulário respondido.');
+          avisar(t('flow.formSubmitted'));
         };
         return <FormularioSheet insumo={insumo} onConcluir={concluir} onFechar={voltarAMissao} />;
       })()}

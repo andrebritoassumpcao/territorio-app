@@ -3,7 +3,7 @@ import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import type { Insignia, Insumo } from '../../types';
 import { useAcervo } from '../../store/useAcervo';
-import { CATEGORIA_ROTULO } from '../jornada/rotulos';
+import { useT } from '../../i18n/I18nProvider';
 import OuvirNpc from '../npc/OuvirNpc';
 
 interface Props {
@@ -24,6 +24,7 @@ interface Props {
 // Memórias da missão (RN-MEM-004) são livres: não contam para o envio.
 export default function MissaoSheet({ missaoId, registrados, onRegistrar, onResponderFormulario, onFechar, onConcluida, onOuvirNpc, onAdicionarMemoria }: Props) {
   const { missoes, memorias, concluirMissao } = useAcervo();
+  const { t } = useT();
   const missao = missoes.find((m) => m.id === missaoId);
   const memoriasDaMissao = memorias.filter((m) => m.missaoId === missaoId);
   const [enviando, setEnviando] = useState(false);
@@ -50,17 +51,17 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onResp
 
   return (
     <Sheet aberto onFechar={onFechar} titulo={missao.titulo} cor="var(--color-missao)">
-      <span className="chip chip--missao">{CATEGORIA_ROTULO[missao.categoria]}</span>
+      <span className="chip chip--missao">{t(`category.${missao.categoria}`)}</span>
 
       {missao.npc && <OuvirNpc npc={missao.npc} alvo="missao" onOuvir={onOuvirNpc} />}
 
       <section className="bloco">
-        <h3 className="bloco__titulo">O que deve ser feito</h3>
+        <h3 className="bloco__titulo">{t('mission.whatToDo')}</h3>
         <p className="bloco__texto">{missao.instrucao}</p>
       </section>
 
       <section className="bloco">
-        <h3 className="bloco__titulo">O que coletar</h3>
+        <h3 className="bloco__titulo">{t('mission.whatToCollect')}</h3>
         <ul className="insumos">
           {missao.oQueColetar.map((i, idx) => {
             const feito = registrados.includes(i.id) || jaConcluida;
@@ -68,10 +69,10 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onResp
               <li key={i.id} className={`insumo${feito ? ' insumo--feito' : ''}`}>
                 <span className="insumo__info">
                   <span className="insumo__rotulo">{i.rotulo}</span>
-                  {!i.obrigatorio && <span className="insumo__opcional">opcional</span>}
+                  {!i.obrigatorio && <span className="insumo__opcional">{t('common.optional')}</span>}
                 </span>
                 {feito ? (
-                  <span className="insumo__ok" aria-label="Registrado"><Icone nome="check" tamanho={18} /></span>
+                  <span className="insumo__ok" aria-label={t('mission.recorded')}><Icone nome="check" tamanho={18} /></span>
                 ) : i.tipo === 'formulario' ? (
                   <button
                     type="button"
@@ -79,7 +80,7 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onResp
                     data-tour={idx === 0 ? 'registrar' : undefined}
                     onClick={() => onResponderFormulario(i)}
                   >
-                    <Icone nome="message" tamanho={16} /> Responder
+                    <Icone nome="message" tamanho={16} /> {t('mission.answer')}
                   </button>
                 ) : (
                   <button
@@ -88,7 +89,7 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onResp
                     data-tour={idx === 0 ? 'registrar' : undefined}
                     onClick={() => onRegistrar(i.id)}
                   >
-                    <Icone nome="camera" tamanho={16} /> Registrar
+                    <Icone nome="camera" tamanho={16} /> {t('mission.record')}
                   </button>
                 )}
               </li>
@@ -98,38 +99,38 @@ export default function MissaoSheet({ missaoId, registrados, onRegistrar, onResp
       </section>
 
       <section className="bloco">
-        <h3 className="bloco__titulo">Memórias desta missão</h3>
+        <h3 className="bloco__titulo">{t('mission.memoriesHere')}</h3>
         {memoriasDaMissao.length > 0 ? (
           <ul className="mini-memorias">
             {memoriasDaMissao.map((m) => (
               <li key={m.id} className="mini-memoria">
                 <Icone nome="message" tamanho={16} />
-                <span><strong>{m.titulo}</strong> — {m.descricao || 'sem comentário'}</span>
+                <span><strong>{m.titulo}</strong>{m.descricao ? ` — ${m.descricao}` : ''}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="dica">Nenhuma memória ainda. Registre algo deste momento — não precisa para enviar.</p>
+          <p className="dica">{t('mission.memoriesHint')}</p>
         )}
         <button type="button" className="botao-secundario botao-secundario--memoria" onClick={onAdicionarMemoria}>
-          <Icone nome="plus" tamanho={16} /> Adicionar memória
+          <Icone nome="plus" tamanho={16} /> {t('mission.addMemory')}
         </button>
       </section>
 
       <div className="recompensa-preview">
         <Icone nome="trophy" tamanho={18} />
-        <span>Recompensa: <strong>{missao.recompensa}</strong> · +{missao.xp} XP</span>
+        <span>{t('mission.reward')}: <strong>{missao.recompensa}</strong> · +{missao.xp} XP</span>
       </div>
 
       {jaConcluida ? (
-        <p className="aviso aviso--sucesso"><Icone nome="check" tamanho={16} /> Missão já concluída e guardada na sua jornada.</p>
+        <p className="aviso aviso--sucesso"><Icone nome="check" tamanho={16} /> {t('mission.alreadyDone')}</p>
       ) : (
         <button type="button" className="botao-primario" data-tour="enviar" disabled={faltaObrigatorio || enviando} onClick={enviar}>
-          {enviando ? 'Enviando…' : 'Enviar missão'}
+          {enviando ? t('mission.submitting') : t('mission.submit')}
         </button>
       )}
       {!jaConcluida && faltaObrigatorio && (
-        <p className="dica">Registre os itens obrigatórios para enviar.</p>
+        <p className="dica">{t('mission.submitHint')}</p>
       )}
     </Sheet>
   );

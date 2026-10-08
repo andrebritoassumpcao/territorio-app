@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Insumo, RespostaItem } from '../../types';
 import Icone from '../../ui/Icone';
+import { useT } from '../../i18n/I18nProvider';
 
 interface Props {
   insumo: Insumo;
@@ -16,6 +17,7 @@ const LETRAS = ['a', 'b', 'c', 'd'];
 // direita". Múltipla = a/b/c/d; aberta = texto. Obrigatória trava o avanço; opcional
 // pode pular. Enquete (sem resposta certa). Ver features/missao + ui/fluxo.
 export default function FormularioSheet({ insumo, onConcluir, onFechar }: Props) {
+  const { t } = useT();
   const perguntas = insumo.perguntas ?? [];
   const [indice, setIndice] = useState(0);
   const [respostas, setRespostas] = useState<Record<string, number | string>>({});
@@ -76,20 +78,20 @@ export default function FormularioSheet({ insumo, onConcluir, onFechar }: Props)
     }
   }
 
-  const rotuloAvancar = ultima ? 'Concluir' : pergunta.obrigatoria ? 'Próximo' : respondida ? 'Próximo' : 'Pular';
+  const rotuloAvancar = ultima ? t('common.finish') : pergunta.obrigatoria ? t('common.next') : respondida ? t('common.next') : t('common.skip');
 
   return (
-    <div className="formulario" role="dialog" aria-modal="true" aria-label={insumo.rotulo || 'Formulário'} tabIndex={-1} ref={raiz}>
+    <div className="formulario" role="dialog" aria-modal="true" aria-label={insumo.rotulo || t('form.default')} tabIndex={-1} ref={raiz}>
       <div className="formulario__palco">
         <header className="formulario__topo">
-          <span className="formulario__rotulo">{insumo.rotulo || 'Formulário'}</span>
-          <button type="button" className="botao-icone" onClick={onFechar} aria-label="Fechar">
+          <span className="formulario__rotulo">{insumo.rotulo || t('form.default')}</span>
+          <button type="button" className="botao-icone" onClick={onFechar} aria-label={t('common.close')}>
             <Icone nome="x" />
           </button>
         </header>
 
-        <div className="formulario__progresso" aria-label={`Pergunta ${indice + 1} de ${perguntas.length}`}>
-          <span className="formulario__progresso-texto">Pergunta {indice + 1} de {perguntas.length}</span>
+        <div className="formulario__progresso" aria-label={t('form.questionOf', { n: indice + 1, total: perguntas.length })}>
+          <span className="formulario__progresso-texto">{t('form.questionOf', { n: indice + 1, total: perguntas.length })}</span>
           <span className="formulario__barra">
             <span className="formulario__barra-fill" style={{ width: `${((indice + 1) / perguntas.length) * 100}%` }} />
           </span>
@@ -98,7 +100,7 @@ export default function FormularioSheet({ insumo, onConcluir, onFechar }: Props)
         <div className="formulario__conteudo" key={pergunta.id}>
           <h2 className="formulario__enunciado">
             {pergunta.enunciado}
-            {!pergunta.obrigatoria && <span className="formulario__opcional"> (opcional)</span>}
+            {!pergunta.obrigatoria && <span className="formulario__opcional"> ({t('common.optional')})</span>}
           </h2>
 
           {pergunta.tipo === 'multipla' ? (
@@ -122,7 +124,7 @@ export default function FormularioSheet({ insumo, onConcluir, onFechar }: Props)
           ) : (
             <textarea
               className="formulario__texto"
-              placeholder="Escreva sua resposta…"
+              placeholder={t('form.answerPlaceholder')}
               value={typeof valor === 'string' ? valor : ''}
               onChange={(e) => setValor(e.target.value)}
               rows={5}
@@ -134,7 +136,7 @@ export default function FormularioSheet({ insumo, onConcluir, onFechar }: Props)
         <div className="formulario__rodape">
           {indice > 0 ? (
             <button type="button" className="botao-secundario" onClick={() => setIndice((i) => i - 1)}>
-              <Icone nome="arrow-left" tamanho={16} /> Voltar
+              <Icone nome="arrow-left" tamanho={16} /> {t('common.back')}
             </button>
           ) : (
             <span />

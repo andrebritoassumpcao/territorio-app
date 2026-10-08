@@ -1,5 +1,6 @@
 import { driver, type Driver, type DriveStep } from 'driver.js';
 import 'driver.js/dist/driver.css';
+import { t } from '../../i18n/idioma';
 
 // Tour guiado de onboarding (spotlight) na página Minha jornada, no primeiro acesso.
 // Percorre missões/memórias, abre a 1ª missão e mostra Registrar → Enviar, SEM enviar
@@ -43,22 +44,19 @@ export function iniciarTourGuiado(ctrl: TourCtrl, aoFim: () => void) {
   const base: DriveStep[] = [
     {
       element: '[data-tour="scan"]',
-      popover: {
-        title: 'Tudo começa por um QR',
-        description: 'Cada missão e totem do território tem um QR. Toque em “Escanear QR” e aponte a câmera para começar a sua jornada.'
-      }
+      popover: { title: t('tour.scan.title'), description: t('tour.scan.desc') }
     },
     {
       element: '[data-tour="missao"]',
-      popover: { title: 'Suas missões', description: 'As missões por fazer ficam aqui, na sua jornada.' }
+      popover: { title: t('tour.missions.title'), description: t('tour.missions.desc') }
     },
     {
       element: '[data-tour="insignias"]',
-      popover: { title: 'Suas conquistas', description: 'Você ganha insígnias ao avançar: primeiro acesso, primeira missão, primeira memória e mais.' }
+      popover: { title: t('tour.badges.title'), description: t('tour.badges.desc') }
     },
     {
       element: '[data-tour="memorias"]',
-      popover: { title: 'Suas memórias', description: 'As fotos e relatos que você guardar durante as missões aparecem aqui.' }
+      popover: { title: t('tour.memories.title'), description: t('tour.memories.desc') }
     }
   ].filter((s) => document.querySelector(s.element as string));
 
@@ -68,8 +66,8 @@ export function iniciarTourGuiado(ctrl: TourCtrl, aoFim: () => void) {
         {
           element: '[data-tour="missao"]',
           popover: {
-            title: 'Vamos abrir uma missão',
-            description: 'Toque numa missão para ver os detalhes. Vou abrir esta para você — é só tocar em “Próximo”.',
+            title: t('tour.openMission.title'),
+            description: t('tour.openMission.desc'),
             onNextClick: async () => {
               ctrl.abrirSheet(ctrl.missaoId!);
               await esperarElemento('[data-tour="registrar"]');
@@ -80,8 +78,8 @@ export function iniciarTourGuiado(ctrl: TourCtrl, aoFim: () => void) {
         {
           element: '[data-tour="registrar"]',
           popover: {
-            title: 'Registre o que a missão pede',
-            description: 'Cada item pedido tem um botão “Registrar” (foto, texto, check-in…). Vou registrar por você para mostrar o próximo passo.',
+            title: t('tour.register.title'),
+            description: t('tour.register.desc'),
             onNextClick: async () => {
               ctrl.insumosObrigatorios.forEach((insumoId) => ctrl.registrar(ctrl.missaoId!, insumoId));
               await esperarElemento('[data-tour="enviar"]', { enabled: true });
@@ -91,7 +89,7 @@ export function iniciarTourGuiado(ctrl: TourCtrl, aoFim: () => void) {
         },
         {
           element: '[data-tour="enviar"]',
-          popover: { title: 'Envie para concluir', description: 'Com os itens obrigatórios registrados, o botão “Enviar missão” libera. É ele que conclui a missão e revela a recompensa.' }
+          popover: { title: t('tour.send.title'), description: t('tour.send.desc') }
         }
       ]
     : [];
@@ -116,10 +114,10 @@ export function iniciarTourGuiado(ctrl: TourCtrl, aoFim: () => void) {
     // o avanço é só pelo "Próximo". O tour abre a missão de forma controlada.
     disableActiveInteraction: true,
     overlayOpacity: 0.6,
-    nextBtnText: 'Próximo',
-    prevBtnText: 'Voltar',
-    doneBtnText: 'Concluir',
-    progressText: '{{current}} de {{total}}',
+    nextBtnText: t('tour.next'),
+    prevBtnText: t('tour.back'),
+    doneBtnText: t('tour.done'),
+    progressText: t('tour.progress'),
     steps,
     onDestroyed: () => {
       ativo = null;

@@ -2334,6 +2334,11 @@ input[type="color"]::-webkit-color-swatch {
   to { opacity: 1; }
 }
 
+/* Toggle de idioma EN | PT na top bar do mapa */
+.lang-switch { display: inline-flex; flex: none; border: 1px solid var(--border-color, #d9e0db); border-radius: 999px; overflow: hidden; background: #fff; }
+.lang-switch__opt { border: none; background: none; padding: 5px 9px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; color: var(--text-secondary, #5a6b60); cursor: pointer; }
+.lang-switch__opt.is-active { background: var(--primary, #1f7a4c); color: #fff; }
+
 .memory-description {
   padding: 12px 20px 16px;
   font-size: 14px;

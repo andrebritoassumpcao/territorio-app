@@ -21,14 +21,37 @@ import {
 import { dbEnabled, loadSnapshot, saveSnapshot, supabase } from './db.js';
 import { authEnabled, getSession, signIn, signOut } from './auth.js';
 import { upsertMissaoParaApp } from './handoff.js';
+import { t, getLang, setLang } from '../i18n/idioma';
+
+// i18n do mapa (vanilla): traduz os textos estáticos com data-i18n* e expõe t()
+// para os textos gerados dinamicamente. Padrão inglês; o toggle recarrega a página.
+function aplicarIdioma() {
+  const lang = getLang();
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))); });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+  aplicarIdioma();
+  const langSwitch = document.getElementById('lang-switch');
+  if (langSwitch) {
+    langSwitch.querySelectorAll('[data-lang]').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.getAttribute('data-lang') === getLang());
+      btn.addEventListener('click', () => {
+        const novo = btn.getAttribute('data-lang');
+        if (novo && novo !== getLang()) { setLang(novo); location.reload(); }
+      });
+    });
+  }
   // 1. INICIALIZAÇÃO DO MAPA (LEAFLET + SATÉLITE ESRI)
-  // Vista inicial é definida via fitBounds sobre as áreas reais (Queimados / Nova Iguaçu)
-  // mais abaixo; estas constantes servem apenas de fallback caso não haja shapes.
-  const initialLat = -22.745;
-  const initialLng = -43.525;
-  const initialZoom = 12;
+  // Piloto em Berlim: o mapa abre centrado em Berlim. O conteúdo-semente brasileiro
+  // continua existindo nos dados, só começa fora da tela (o auto-fit foi desligado).
+  const initialLat = 52.52;
+  const initialLng = 13.405;
+  const initialZoom = 11;
 
   const map = L.map('map', {
     zoomControl: false,
@@ -190,11 +213,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const PIN_COLORS = [
-    { color: '#1f7a4c', label: 'Verde' },
-    { color: '#d4832a', label: 'Âmbar' },
-    { color: '#b3241b', label: 'Vermelho' },
-    { color: '#00bcd4', label: 'Ciano' },
-    { color: '#7c4dff', label: 'Roxo' }
+    { color: '#1f7a4c', label: t('map.color.green') },
+    { color: '#d4832a', label: t('map.color.amber') },
+    { color: '#b3241b', label: t('map.color.red') },
+    { color: '#00bcd4', label: t('map.color.cyan') },
+    { color: '#7c4dff', label: t('map.color.purple') }
   ];
 
   function iconImg(src, size = 16) {
@@ -227,24 +250,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return `<button type="button" class="color-swatch${active}" data-color="${color}" style="background:${color}" aria-label="${label}" onclick="applyMarkerColor('${kind}','${escapeJsString(id)}','${color}')"></button>`;
     }).join('');
     const pickerVal = current || '#1f7a4c';
-    return `${swatches}<input type="color" value="${pickerVal}" aria-label="Cor personalizada" oninput="applyMarkerColor('${kind}','${escapeJsString(id)}', this.value)">`;
+    return `${swatches}<input type="color" value="${pickerVal}" aria-label="${t('map.customColor')}" oninput="applyMarkerColor('${kind}','${escapeJsString(id)}', this.value)">`;
   }
 
   function markerActionsHtml(kind, id, selectedColor) {
     const safeId = escapeJsString(id);
     return `
       <div class="marker-actions">
-        <button type="button" class="marker-action-btn" data-requires-auth aria-label="Estilo" aria-expanded="false" aria-controls="marker-style-${kind}-${id}" onclick="toggleMarkerStyle(event,'${kind}','${safeId}')">
+        <button type="button" class="marker-action-btn" data-requires-auth aria-label="${t('map.style')}" aria-expanded="false" aria-controls="marker-style-${kind}-${id}" onclick="toggleMarkerStyle(event,'${kind}','${safeId}')">
           ${iconImg(ICON.palette, 18)}
         </button>
-        <button type="button" class="marker-action-btn" data-requires-auth aria-label="Editar" onclick="editMapItem('${kind}','${safeId}')">
+        <button type="button" class="marker-action-btn" data-requires-auth aria-label="${t('map.edit')}" onclick="editMapItem('${kind}','${safeId}')">
           ${iconImg(ICON.pencil, 18)}
         </button>
-        <button type="button" class="marker-action-btn marker-action-danger" data-requires-auth aria-label="Excluir" onclick="confirmDeleteMapItem('${kind}','${safeId}')">
+        <button type="button" class="marker-action-btn marker-action-danger" data-requires-auth aria-label="${t('common.delete')}" onclick="confirmDeleteMapItem('${kind}','${safeId}')">
           ${iconImg(ICON.trash, 18)}
         </button>
       </div>
-      <div class="marker-style-popover hidden" id="marker-style-${kind}-${id}" role="group" aria-label="Cor do pino">
+      <div class="marker-style-popover hidden" id="marker-style-${kind}-${id}" role="group" aria-label="${t('map.pinColor')}">
         ${colorSwatchesHtml(kind, id, selectedColor)}
       </div>
     `;
@@ -385,12 +408,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function shapeKindLabel(tipo) {
-    return tipo === 'linha' ? 'trilha' : 'área';
+    return tipo === 'linha' ? t('map.trail') : t('map.areaWord');
   }
 
   function vinculoShapeHtml(vinculo) {
     if (!vinculo) return '';
-    return `<p class="card-vinculo">Vinculada à ${shapeKindLabel(vinculo.tipo)} <strong>${vinculo.titulo}</strong>.</p>`;
+    return `<p class="card-vinculo">${t('map.linkedToShape', undefined, { kind: shapeKindLabel(vinculo.tipo), title: escapeHtml(vinculo.titulo) })}</p>`;
   }
 
   function escapeHtml(value) {
@@ -506,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function memoryPanelHtml(kind, data) {
     const memorias = data.memorias || [];
-    const addBtn = `<button type="button" class="card-btn card-btn-purple" data-requires-auth onclick="openCreateMemoryFor('${kind}','${escapeJsString(data.id)}')">Adicionar memória</button>`;
+    const addBtn = `<button type="button" class="card-btn card-btn-purple" data-requires-auth onclick="openCreateMemoryFor('${kind}','${escapeJsString(data.id)}')">${t('map.card.addMemory')}</button>`;
     const items = memorias.map((m, i) => `
       <button type="button" class="card-memory-item" onclick="openParentMemory('${kind}','${escapeJsString(data.id)}',${i})">
         <img src="${m.fotoUrl}" alt="" class="card-memory-thumb" onerror="this.onerror=null; this.src='${fallbackImg}';" />
@@ -522,8 +545,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const remoto = `<div class="card-memory-list" id="remote-mem-${data.id}"></div>`;
     const vazio = `
       <div class="card-memory-empty" id="mem-empty-${data.id}"${memorias.length ? ' hidden' : ''}>
-        <p class="card-memory-empty-title">Nenhuma memória ainda</p>
-        <p class="card-memory-empty-text">Guarde fotos e relatos deste lugar.</p>
+        <p class="card-memory-empty-title">${t('map.card.noMemoryTitle')}</p>
+        <p class="card-memory-empty-text">${t('map.card.noMemoryText')}</p>
       </div>`;
     return `${lista}${remoto}${vazio}${addBtn}`;
   }
@@ -533,11 +556,11 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `<p class="card-desc">${escapeHtml(data.descricao)}</p>`
       : '';
     const cat = data.categoriaLabel
-      ? `<div class="card-meta-item">Categoria: <strong>${escapeHtml(data.categoriaLabel)}</strong></div>`
+      ? `<div class="card-meta-item">${t('map.card.category')}: <strong>${escapeHtml(data.categoriaLabel)}</strong></div>`
       : '';
     const volunteers = data.participantes
-      ? `<div class="card-meta-item">Voluntários: <strong>${data.participantes} inscritos</strong></div>`
-      : `<div class="card-meta-item">Participantes: <strong>1 participante (Você)</strong></div>`;
+      ? `<div class="card-meta-item">${t('map.card.volunteers')}: <strong>${data.participantes} ${t('map.card.enrolled')}</strong></div>`
+      : `<div class="card-meta-item">${t('map.card.participants')}: <strong>${t('map.card.youParticipant')}</strong></div>`;
     const avatars = data.participantes
       ? `
         <div class="card-participants">
@@ -546,15 +569,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="mini-avatar">JS</div>
             <div class="mini-avatar">MR</div>
           </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">+15 outros participantes</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">${t('map.card.others')}</span>
         </div>
       `
       : '';
-    const detailsLabel = data.participantes ? 'Ver detalhes da missão' : 'Ver missão';
+    const detailsLabel = data.participantes ? t('map.card.viewMissionDetails') : t('map.card.viewMission');
     const instrucao = data.instrucao
       ? `
         <div class="card-instrucao">
-          <span class="card-instrucao-label">O que deve ser feito</span>
+          <span class="card-instrucao-label">${t('mission.whatToDo')}</span>
           <p class="card-instrucao-text">${escapeHtml(data.instrucao)}</p>
         </div>
       `
@@ -562,11 +585,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const coletar = (data.insumos && data.insumos.length)
       ? `
         <div class="card-providencias">
-          <span class="card-providencias-label">O que coletar</span>
+          <span class="card-providencias-label">${t('mission.whatToCollect')}</span>
           <ul class="card-providencias-list">
             ${data.insumos.map(it => `
               <li class="card-providencias-item">
-                <input type="checkbox" disabled /> <span>${escapeHtml(it.rotulo || TIPO_INSUMO_LABEL[it.tipo] || it.tipo)}${it.obrigatorio ? '' : ' <em>(opcional)</em>'}</span>
+                <input type="checkbox" disabled /> <span>${escapeHtml(it.rotulo || TIPO_INSUMO_LABEL[it.tipo] || it.tipo)}${it.obrigatorio ? '' : ` <em>(${t('common.optional')})</em>`}</span>
               </li>
             `).join('')}
           </ul>
@@ -574,22 +597,22 @@ document.addEventListener('DOMContentLoaded', () => {
       `
       : '';
     const recompensa = data.recompensa
-      ? `<div class="card-meta-item">Recompensa: <strong>${escapeHtml(data.recompensa)}</strong></div>`
+      ? `<div class="card-meta-item">${t('map.card.reward')}: <strong>${escapeHtml(data.recompensa)}</strong></div>`
       : '';
     const npc = data.npc
       ? `
         <div class="card-instrucao">
-          <span class="card-instrucao-label">Personagem: ${escapeHtml(data.npc.nome || '')}</span>
+          <span class="card-instrucao-label">${t('map.card.character')}: ${escapeHtml(data.npc.nome || '')}</span>
           ${(data.npc.falas || []).filter(f => f.texto).map(f => `<p class="card-instrucao-text">"${escapeHtml(f.texto)}"</p>`).join('')}
         </div>
       `
       : '';
     const prazoLinha = (data.temPrazo === false || !data.prazo)
-      ? `<div class="card-meta-item">Prazo: <strong>Sem prazo — missão contínua</strong></div>`
-      : `<div class="card-meta-item">Prazo: <strong>${escapeHtml(formatMemoryDate(data.prazo))}</strong></div>`;
+      ? `<div class="card-meta-item">${t('map.card.deadline')}: <strong>${t('map.card.noDeadline')}</strong></div>`
+      : `<div class="card-meta-item">${t('map.card.deadline')}: <strong>${escapeHtml(formatMemoryDate(data.prazo))}</strong></div>`;
     return `
       <div class="card-header-badge">
-        <span class="card-type-tag missao">Missão</span>
+        <span class="card-type-tag missao">${t('map.mission')}</span>
         <span class="card-status">${escapeHtml(data.status || '')}</span>
       </div>
       <h3 class="card-title">${escapeHtml(data.titulo)}</h3>
@@ -608,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="card-action-group">
         <button class="card-btn card-btn-primary" type="button" onclick="verMissaoNoApp('${escapeJsString(data.id)}')">${detailsLabel}</button>
         <button class="card-btn card-btn-outline" type="button" onclick="gerarQrMissao('${escapeJsString(data.id)}')">
-          Gerar arte de QR
+          ${t('map.generateQr')}
         </button>
       </div>
       <div id="qr-preview-missao-${data.id}"></div>
@@ -616,13 +639,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function marcadorSobreInner(data) {
-    const tag = data.tagTitle || 'Marcador';
+    const tag = data.tagTitle || t('map.marker');
     const tagClass = data.badgeClass || 'marcador';
     const status = data.status
       ? `<span class="card-status">${escapeHtml(data.status)}</span>`
       : '';
     const cat = data.categoriaLabel
-      ? `<div class="card-meta-item">Categoria: <strong>${escapeHtml(data.categoriaLabel)}</strong></div>`
+      ? `<div class="card-meta-item">${t('map.card.category')}: <strong>${escapeHtml(data.categoriaLabel)}</strong></div>`
       : '';
     const desc = data.descricao
       ? `<p class="card-desc">${escapeHtml(data.descricao)}</p>`
@@ -650,20 +673,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Aba "Respostas": só para missão com formulário e admin logado (RLS).
     const temResp = kind === 'missao' && isAuthenticated && missaoTemFormulario(data);
     const act = activeTab === 'memorias' || activeTab === 'respostas' ? activeTab : 'sobre';
-    const abaBtn = (t, rotulo) => `<button type="button" class="card-tab${act === t ? ' is-active' : ''}" role="tab"
-      aria-selected="${act === t}" aria-controls="panel-${t}-${id}" id="tab-${t}-${id}"
-      onclick="switchCardTab('${id}','${t}')">${rotulo}</button>`;
-    const painel = (t, inner) => `<div class="card-tab-panel" id="panel-${t}-${id}" role="tabpanel" aria-labelledby="tab-${t}-${id}" ${act === t ? '' : 'hidden'}>${inner}</div>`;
+    const lblSobre = t('map.card.about');
+    const lblMemorias = t('map.card.memories');
+    const lblRespostas = t('map.card.answers');
+    const lblCardAria = t('map.card.aria');
+    const lblCarregando = t('map.card.loadingAnswers');
+    const abaBtn = (chave, rotulo) => `<button type="button" class="card-tab${act === chave ? ' is-active' : ''}" role="tab"
+      aria-selected="${act === chave}" aria-controls="panel-${chave}-${id}" id="tab-${chave}-${id}"
+      onclick="switchCardTab('${id}','${chave}')">${rotulo}</button>`;
+    const painel = (chave, inner) => `<div class="card-tab-panel" id="panel-${chave}-${id}" role="tabpanel" aria-labelledby="tab-${chave}-${id}" ${act === chave ? '' : 'hidden'}>${inner}</div>`;
     return `
       <div class="context-card" data-card-id="${id}">
-        <div class="card-tabs" role="tablist" aria-label="Conteúdo do card">
-          ${abaBtn('sobre', 'Sobre')}
-          ${abaBtn('memorias', `Memórias${badge}`)}
-          ${temResp ? abaBtn('respostas', 'Respostas') : ''}
+        <div class="card-tabs" role="tablist" aria-label="${lblCardAria}">
+          ${abaBtn('sobre', lblSobre)}
+          ${abaBtn('memorias', `${lblMemorias}${badge}`)}
+          ${temResp ? abaBtn('respostas', lblRespostas) : ''}
         </div>
         ${painel('sobre', kind === 'missao' ? missaoSobreInner(data) : marcadorSobreInner(data))}
         ${painel('memorias', memoryPanelHtml(kind, data))}
-        ${temResp ? painel('respostas', '<p class="figital-empty-state">Carregando respostas…</p>') : ''}
+        ${temResp ? painel('respostas', `<p class="figital-empty-state">${lblCarregando}</p>`) : ''}
         ${markerActionsHtml(kind, id, data.cor)}
       </div>
     `;
@@ -671,20 +699,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function mutiraoPopupHtml(data) {
     const parentLine = data.missaoPai
-      ? `<p style="font-size:0.78rem; color: var(--text-muted); margin-bottom: 4px;">Faz parte da Missão: <strong>${escapeHtml(data.missaoPai)}</strong></p>`
+      ? `<p style="font-size:0.78rem; color: var(--text-muted); margin-bottom: 4px;">${t('map.card.partOfMission')}: <strong>${escapeHtml(data.missaoPai)}</strong></p>`
       : '';
     const dataHora = data.dataHora
       ? `<div class="card-meta-item"><strong>${escapeHtml(data.dataHora)}</strong></div>`
-      : `<div class="card-meta-item">Ponto marcado no território</div>`;
+      : `<div class="card-meta-item">${t('map.card.pointMarked')}</div>`;
     const vagas = data.vagas
-      ? `<div class="card-meta-item">Vagas: <strong>${escapeHtml(data.vagas)}</strong></div>`
-      : `<div class="card-meta-item">Mobilização comunitária ativa</div>`;
-    const tag = data.missaoPai ? 'Mutirão' : 'Mutirão Vinculado';
+      ? `<div class="card-meta-item">${t('map.card.slots')}: <strong>${escapeHtml(data.vagas)}</strong></div>`
+      : `<div class="card-meta-item">${t('map.card.mobilization')}</div>`;
+    const tag = data.missaoPai ? t('map.workParty') : t('map.card.linkedWorkParty');
     return `
       <div class="context-card context-card-simple">
         <div class="card-header-badge">
           <span class="card-type-tag mutirao">${tag}</span>
-          ${data.missaoPai ? '' : '<span class="card-status">Confirmado</span>'}
+          ${data.missaoPai ? '' : `<span class="card-status">${t('map.card.confirmed')}</span>`}
         </div>
         <h3 class="card-title">${escapeHtml(data.titulo)}</h3>
         ${parentLine}
@@ -692,7 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${dataHora}
           ${vagas}
         </div>
-        <button class="card-btn card-btn-amber" type="button" onclick="showToast('Inscrição confirmada no mutirão!')">Participar do mutirão</button>
+        <button class="card-btn card-btn-amber" type="button" onclick="showToast('${escapeJsString(t('map.card.enrolledToast'))}')">${t('map.card.joinWorkParty')}</button>
         ${markerActionsHtml('mutirao', data.id, data.cor)}
       </div>
     `;
@@ -735,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const itens = (d.itens || []).map(it => `
       <div class="card-meta-item" style="display:block; margin-bottom:6px">
         <strong>${escapeHtml(it.enunciado || '')}</strong><br>
-        ${it.valor ? escapeHtml(it.valor) : '<em>(em branco)</em>'}
+        ${it.valor ? escapeHtml(it.valor) : `<em>${t('map.card.blank')}</em>`}
       </div>`).join('');
     return `
       <div class="context-card context-card-simple" style="margin-bottom:8px">
@@ -747,21 +775,21 @@ document.addEventListener('DOMContentLoaded', () => {
   window.carregarRespostas = async function(missaoId) {
     const panel = document.getElementById('panel-respostas-' + missaoId);
     if (!panel) return;
-    if (!supabase) { panel.innerHTML = '<p class="figital-empty-state">Entre para ver as respostas.</p>'; return; }
-    panel.innerHTML = '<p class="figital-empty-state">Carregando respostas…</p>';
+    if (!supabase) { panel.innerHTML = `<p class="figital-empty-state">${t('map.resp.signInToView')}</p>`; return; }
+    panel.innerHTML = `<p class="figital-empty-state">${t('map.card.loadingAnswers')}</p>`;
     try {
       const { data, error } = await supabase
         .from('respostas')
         .select('data, created_at')
         .eq('missao_id', missaoId)
         .order('created_at', { ascending: false });
-      if (error) { panel.innerHTML = '<p class="figital-empty-state">Não foi possível carregar.</p>'; return; }
-      if (!data || !data.length) { panel.innerHTML = '<p class="figital-empty-state">Nenhuma resposta ainda.</p>'; return; }
+      if (error) { panel.innerHTML = `<p class="figital-empty-state">${t('map.resp.loadFail')}</p>`; return; }
+      if (!data || !data.length) { panel.innerHTML = `<p class="figital-empty-state">${t('map.resp.none')}</p>`; return; }
       panel.innerHTML = data.map(renderEnvioRespostas).join('');
       const tabBtn = document.getElementById('tab-respostas-' + missaoId);
-      if (tabBtn) tabBtn.innerHTML = `Respostas <span class="card-tab-badge">${data.length}</span>`;
+      if (tabBtn) tabBtn.innerHTML = `${t('map.card.answers')} <span class="card-tab-badge">${data.length}</span>`;
     } catch (e) {
-      panel.innerHTML = '<p class="figital-empty-state">Não foi possível carregar.</p>';
+      panel.innerHTML = `<p class="figital-empty-state">${t('map.resp.loadFail')}</p>`;
     }
   };
 
@@ -780,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function mapearMemoriaRemota(row) {
     return {
       id: row.id,
-      titulo: row.titulo || 'Memória sem título',
+      titulo: row.titulo || t('map.card.untitledMemory'),
       autor: row.autor || 'Anônimo',
       data: row.created_at ? String(row.created_at).slice(0, 10) : '',
       fotoUrl: row.foto_url || fallbackImg,
@@ -810,7 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="card-memory-date">${escapeHtml(formatMemoryDate(m.data))}</span>
             </span>
           </button>
-          ${isAuthenticated ? `<button type="button" title="Apagar memória" aria-label="Apagar memória" onclick="apagarMemoria('${escapeJsString(m.id)}','${escapeJsString(missaoId)}')" style="position:absolute; top:6px; right:6px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:14px; line-height:1; cursor:pointer;">×</button>` : ''}
+          ${isAuthenticated ? `<button type="button" title="${t('map.deleteMemoryAria')}" aria-label="${t('map.deleteMemoryAria')}" onclick="apagarMemoria('${escapeJsString(m.id)}','${escapeJsString(missaoId)}')" style="position:absolute; top:6px; right:6px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:14px; line-height:1; cursor:pointer;">×</button>` : ''}
         </div>
       `).join('');
 
@@ -821,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const vazio = document.getElementById('mem-empty-' + missaoId);
       if (vazio) vazio.hidden = total > 0;
       const tabBtn = document.getElementById('tab-memorias-' + missaoId);
-      if (tabBtn) tabBtn.innerHTML = `Memórias${total ? ` <span class="card-tab-badge">${total}</span>` : ''}`;
+      if (tabBtn) tabBtn.innerHTML = `${t('map.card.memories')}${total ? ` <span class="card-tab-badge">${total}</span>` : ''}`;
     } catch (e) {
       /* silencioso: mantém o que já está no painel */
     }
@@ -834,9 +862,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.apagarMemoria = async function(id, missaoId) {
     if (!supabase || !isAuthenticated) return;
-    if (!window.confirm('Apagar esta memória? Esta ação não pode ser desfeita.')) return;
+    if (!window.confirm(t('map.confirmDeleteMemory'))) return;
     const { error } = await supabase.from('memorias').delete().eq('id', id);
-    if (error) { window.showToast && window.showToast('Não foi possível apagar a memória.'); return; }
+    if (error) { window.showToast && window.showToast(t('map.toast.deleteMemoryFail')); return; }
     window.carregarMemorias(missaoId);
   };
 
@@ -1216,18 +1244,14 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   ];
 
-  // Enquadrar automaticamente todas as áreas reais ao carregar o mapa.
-  // Usa invalidateSize + refit adiado porque o container do mapa só ganha
-  // dimensões finais após o layout flex, e fitBounds depende do tamanho real.
-  const areasGroup = L.featureGroup(areasReais.map(r => r.layer));
-  if (areasReais.length) {
-    const fitAreas = () => {
-      map.invalidateSize();
-      map.fitBounds(areasGroup.getBounds(), { padding: [40, 40] });
-    };
-    fitAreas();
-    setTimeout(fitAreas, 300);
-  }
+  // Piloto em Berlim: NÃO reenquadra nas áreas-semente brasileiras. O invalidateSize
+  // corrige o tamanho do container após o layout flex e reaplica a vista de Berlim.
+  const reaplicarVista = () => {
+    map.invalidateSize();
+    map.setView([initialLat, initialLng], initialZoom);
+  };
+  reaplicarVista();
+  setTimeout(reaplicarVista, 300);
 
   // 5. INTERAÇÕES E CONTROLES DE INTERFACE
 
@@ -1270,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Escape') closeProfileMenu();
     });
     profileMenu.querySelector('.profile-menu-link')?.addEventListener('click', () => {
-      showToast('Abrindo sua rede...');
+      showToast(t('map.toast.openingNetwork'));
       closeProfileMenu();
     });
     document.getElementById('btn-logout')?.addEventListener('click', async () => {
@@ -1279,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.reload(); // volta para a tela de login com estado limpo
     });
     profileMenu.querySelector('.profile-empty-btn')?.addEventListener('click', () => {
-      showToast('Vamos adicionar uma organização.');
+      showToast(t('map.toast.addOrg'));
       closeProfileMenu();
     });
   }
@@ -1383,10 +1407,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (shapeActionsEl) L.DomEvent.disableClickPropagation(shapeActionsEl);
   if (shapeEditPanel) L.DomEvent.disableClickPropagation(shapeEditPanel);
   const PLACE_TOAST = {
-    missao: 'Clique no mapa para posicionar a missão.',
-    mutirao: 'Clique no mapa para posicionar o mutirão.',
-    memoria: 'Clique no mapa para posicionar a memória.',
-    marcador: 'Clique no mapa para posicionar o marcador.'
+    missao: t('map.place.mission'),
+    mutirao: t('map.place.workParty'),
+    memoria: t('map.place.memory'),
+    marcador: t('map.place.marker')
   };
 
   function setFeatureClicksEnabled(on) {
@@ -1453,8 +1477,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (drawState.vertices.length < minPoints) {
       showToast(
         drawState.tool === 'linha'
-          ? 'Clique pelo menos dois pontos para criar a linha.'
-          : 'Clique pelo menos três pontos para criar a área.'
+          ? t('map.toast.drawMin2')
+          : t('map.toast.drawMin3')
       );
       return;
     }
@@ -1467,8 +1491,8 @@ document.addEventListener('DOMContentLoaded', () => {
       drawState.seqArea += 1;
     }
     const titulo = drawState.tool === 'linha'
-      ? `Linha ${drawState.seqLinha}`
-      : `Área ${drawState.seqArea}`;
+      ? t('map.gen.line', undefined, { n: drawState.seqLinha })
+      : t('map.gen.area', undefined, { n: drawState.seqArea });
     addShapeToMap({
       tipo: drawState.tool,
       titulo,
@@ -1478,11 +1502,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     discardDraft();
     if (mapTool === 'draw') setFeatureClicksEnabled(false);
-    showToast(`"${titulo}" adicionada ao mapa.`);
+    showToast(t('map.toast.addedToMap', undefined, { title: titulo }));
   }
 
   function updateDrawColorLabel() {
-    const label = drawState.tool === 'linha' ? 'Cor da linha' : 'Cor da área';
+    const label = drawState.tool === 'linha' ? t('map.lineColor') : t('map.areaColor');
     if (drawColorLabel) drawColorLabel.textContent = 'Cor';
     if (drawColorPicker) drawColorPicker.setAttribute('aria-label', label);
     const swatches = document.getElementById('draw-color-swatches');
@@ -1579,15 +1603,15 @@ document.addEventListener('DOMContentLoaded', () => {
     map.getContainer().classList.remove('select-cursor');
     map.getContainer().classList.add('place-cursor');
     setFeatureClicksEnabled(false);
-    const itemLabel = kind === 'missao' ? 'a missão' : kind === 'totem' ? 'o totem' : 'o marcador';
-    showToast(`Clique dentro do destaque para posicionar ${itemLabel}.`);
+    const itemLabel = kind === 'missao' ? t('map.theMission') : kind === 'totem' ? t('map.theTotem') : t('map.theMarker');
+    showToast(t('map.toast.clickInsideHighlight', undefined, { label: itemLabel }));
   }
 
   function tryPlaceInside(latlng) {
     const record = placeState.shape || selection.record;
     if (!record) return;
     if (!isPointInShape(latlng, record)) {
-      showToast('Esse ponto está fora da área. Clique dentro do destaque.');
+      showToast(t('map.toast.outsideArea'));
       return;
     }
     placeState.latlng = latlng;
@@ -1656,7 +1680,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).addTo(selectionGroup);
     const addBtn = document.getElementById('btn-shape-add');
     if (addBtn) {
-      addBtn.setAttribute('aria-label', record.tipo === 'linha' ? 'Adicionar à trilha' : 'Adicionar à área');
+      addBtn.setAttribute('aria-label', record.tipo === 'linha' ? t('map.addToTrail') : t('map.addToArea'));
     }
     updateShapeActionsPosition();
     if (typeof refreshShapePercursoButton === 'function') refreshShapePercursoButton();
@@ -1747,7 +1771,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (mapTool === 'place' && !placeState.type) {
-      showToast('Escolha um tipo para posicionar no mapa.');
+      showToast(t('map.toast.chooseType'));
       return;
     }
     if (mapTool === 'place' && placeState.type && !creationModal?.classList.contains('open')) {
@@ -1801,7 +1825,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (placeState.pickingInside || placeState.source === 'shape') {
         cancelShapeAttach();
-        showToast('Posicionamento cancelado.');
+        showToast(t('map.toast.placementCancelled'));
         return;
       }
       if (shapeEditPanel && !shapeEditPanel.classList.contains('hidden')) {
@@ -1815,7 +1839,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (mapTool === 'draw' && drawState.vertices.length > 0) {
         discardDraft();
-        showToast('Rascunho cancelado.');
+        showToast(t('map.toast.draftCancelled'));
         return;
       }
       if (mapTool === 'draw') {
@@ -1828,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (mapTool === 'place') {
         setMapTool('select');
-        showToast('Posicionamento cancelado.');
+        showToast(t('map.toast.placementCancelled'));
         return;
       }
     }
@@ -1892,7 +1916,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeBtn = drawingSubbar.querySelector('.draw-btn.active');
         drawState.tool = activeBtn?.getAttribute('data-draw') || 'poligono';
         updateDrawColorLabel();
-        showToast('Clique no mapa para adicionar pontos. Duplo clique ou Enter para concluir. Esc para cancelar.');
+        showToast(t('map.toast.drawHelp'));
       } else {
         setMapTool('select');
       }
@@ -1906,8 +1930,8 @@ document.addEventListener('DOMContentLoaded', () => {
         discardDraft();
         drawState.tool = mode;
         updateDrawColorLabel();
-        if (mode === 'linha') showToast('Modo de desenho de linha ativado');
-        if (mode === 'poligono') showToast('Modo de polígono ativado');
+        if (mode === 'linha') showToast(t('map.toast.lineMode'));
+        if (mode === 'poligono') showToast(t('map.toast.polygonMode'));
       });
     });
   }
@@ -1994,7 +2018,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof refreshFigitalPanel === 'function') refreshFigitalPanel();
     }
     scheduleSave();
-    showToast('Alterações salvas.');
+    showToast(t('map.toast.changesSaved'));
   }
 
   function openDeleteConfirm() {
@@ -2040,7 +2064,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pendingDelete = null;
     if (confirmDeleteEl) confirmDeleteEl.classList.add('hidden');
     scheduleSave();
-    showToast(record.tipo === 'linha' ? 'Linha excluída.' : 'Área excluída.');
+    showToast(record.tipo === 'linha' ? t('map.toast.lineDeleted') : t('map.toast.areaDeleted'));
   }
 
   const btnShapeAdd = document.getElementById('btn-shape-add');
@@ -2212,7 +2236,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const key = `${filterDateFrom?.value || ''}|${filterDateTo?.value || ''}`;
       if (key !== lastEmptyPeriodToast) {
         lastEmptyPeriodToast = key;
-        showToast('Nada neste período. Tente outras datas.');
+        showToast(t('map.toast.nothingInPeriod'));
       }
     } else if (datedVisible > 0) {
       lastEmptyPeriodToast = '';
@@ -2268,18 +2292,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSubmitModal = document.getElementById('btn-submit-modal');
   let currentActiveTab = 'missao';
   const MODAL_TITLES = {
-    missao: 'Nova missão',
-    mutirao: 'Vincular mutirão',
-    memoria: 'Nova memória',
-    marcador: 'Novo marcador',
-    totem: 'Novo totem'
+    missao: t('map.modal.newMission'),
+    mutirao: t('map.modal.linkWorkParty'),
+    memoria: t('map.modal.newMemory'),
+    marcador: t('map.modal.newMarker'),
+    totem: t('map.modal.newTotem')
   };
   const EDIT_TITLES = {
-    missao: 'Editar missão',
-    mutirao: 'Editar mutirão',
-    memoria: 'Editar memória',
-    marcador: 'Editar marcador',
-    totem: 'Editar totem'
+    missao: t('map.modal.editMission'),
+    mutirao: t('map.modal.editWorkParty'),
+    memoria: t('map.modal.editMemory'),
+    marcador: t('map.modal.editMarker'),
+    totem: t('map.modal.editTotem')
   };
   let editingTotemId = null;
 
@@ -2331,7 +2355,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (creationModal) creationModal.classList.remove('open');
     creationModal?.querySelector('.modal-card')?.classList.remove('is-totem-wizard');
     if (modalTabsEl) modalTabsEl.classList.remove('hidden');
-    if (modalTitleEl) modalTitleEl.textContent = 'Novo Elemento no Mapa';
+    if (modalTitleEl) modalTitleEl.textContent = t('map.newElement');
     restoreMemoryVinculoSelect();
     editingTotemId = null;
     editingItemId = null;
@@ -2356,7 +2380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (placeState.type === 'missao') {
       resetMissaoForm();
     }
-    if (modalTitleEl) modalTitleEl.textContent = MODAL_TITLES[placeState.type] || 'Novo marcador';
+    if (modalTitleEl) modalTitleEl.textContent = MODAL_TITLES[placeState.type] || t('map.modal.newMarker');
     if (modalTabsEl) modalTabsEl.classList.add('hidden');
     setActiveTab(placeState.type || 'marcador');
     openModal();
@@ -2404,20 +2428,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const isEditing = !!editingItemId || !!editingTotemId;
       if (tabName === 'totem') {
         btnSubmitModal.classList.add('card-btn-primary');
-        btnSubmitModal.textContent = isEditing ? 'Salvar totem' : 'Criar totem';
+        btnSubmitModal.textContent = isEditing ? t('map.saveTotem') : t('map.createTotem');
       } else {
         if (tabName === 'missao') {
           btnSubmitModal.classList.add('card-btn-primary');
-          btnSubmitModal.textContent = isEditing ? 'Salvar missão' : 'Criar Missão';
+          btnSubmitModal.textContent = isEditing ? t('map.saveMission') : t('map.createMission');
         } else if (tabName === 'mutirao') {
           btnSubmitModal.classList.add('card-btn-amber');
-          btnSubmitModal.textContent = isEditing ? 'Salvar mutirão' : 'Vincular Mutirão';
+          btnSubmitModal.textContent = isEditing ? t('map.saveWorkParty') : t('map.modal.linkWorkParty');
         } else if (tabName === 'memoria') {
           btnSubmitModal.classList.add('card-btn-purple');
-          btnSubmitModal.textContent = isEditing ? 'Salvar memória' : 'Salvar Memória';
+          btnSubmitModal.textContent = t('map.saveMemory');
         } else if (tabName === 'marcador') {
           btnSubmitModal.classList.add('card-btn-primary');
-          btnSubmitModal.textContent = isEditing ? 'Salvar marcador' : 'Adicionar Marcador';
+          btnSubmitModal.textContent = isEditing ? t('map.saveMarker') : t('map.addMarker');
         }
       }
     }
@@ -2541,7 +2565,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           refreshPinAppearance(editing);
           refreshPinPopup(editing);
-          showToast(`Missão "${titleInput}" atualizada.`);
+          showToast(t('map.toast.missionUpdated', undefined, { title: titleInput }));
           // Handoff: reflete a edição no app (não depende de "Gerar QR").
           upsertMissaoParaApp(editing.data, cenarioInput).then((r) => { if (!r.ok) showToast(r.message); });
         } else {
@@ -2578,7 +2602,7 @@ document.addEventListener('DOMContentLoaded', () => {
           registerMapItem('missao', newData, marker);
           applyFilters();
 
-          showToast(`Missão "${titleInput}" criada no ponto escolhido.`);
+          showToast(t('map.toast.missionCreated', undefined, { title: titleInput }));
           // Handoff: já grava a missão para o app (o QR carrega só o ID).
           upsertMissaoParaApp(newData, cenarioInput).then((r) => { if (!r.ok) showToast(r.message); });
         }
@@ -2590,7 +2614,7 @@ document.addEventListener('DOMContentLoaded', () => {
           editing.data.titulo = mutiraoTitle;
           refreshPinAppearance(editing);
           refreshPinPopup(editing);
-          showToast(`Mutirão "${mutiraoTitle}" atualizado.`);
+          showToast(t('map.toast.workPartyUpdated', undefined, { title: mutiraoTitle }));
         } else {
           const newIcon = createCustomIcon(
             typeBadge('mutirao'),
@@ -2612,7 +2636,7 @@ document.addEventListener('DOMContentLoaded', () => {
           registerMapItem('mutirao', newData, marker);
           applyFilters();
 
-          showToast(`"${mutiraoTitle}" vinculado no ponto escolhido.`);
+          showToast(t('map.toast.workPartyLinked', undefined, { title: mutiraoTitle }));
         }
 
       } else if (currentActiveTab === 'memoria') {
@@ -2622,7 +2646,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const parentId = memoryParent?.id;
         const parentEntry = parentId ? parentById.get(parentId) : null;
         if (!parentEntry) {
-          showToast('Escolha a missão ou o marcador ligado a esta memória.');
+          showToast(t('map.toast.chooseMemoryLink'));
           return;
         }
         const photoSrc = loadedMemoriaPhoto || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=400&q=80';
@@ -2644,7 +2668,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pin = findMapItem('memoria', existing.id);
             if (pin) refreshPinAppearance(pin);
             refreshParentPopup(parentId, 'memorias');
-            showToast(`Memória "${memoriaTitle}" atualizada.`);
+            showToast(t('map.toast.memoryUpdated', undefined, { title: memoriaTitle }));
           }
         } else {
           const newMemoria = {
@@ -2662,7 +2686,9 @@ document.addEventListener('DOMContentLoaded', () => {
           parentEntry.data.memorias.push(newMemoria);
           refreshParentPopup(parentId, 'memorias');
 
-          showToast(`Memória ligada ${parentKind === 'marcador' ? 'ao marcador' : 'à missão'} ${parentName}.`);
+          showToast(parentKind === 'marcador'
+            ? t('map.toast.memoryLinkedMarker', undefined, { name: parentName })
+            : t('map.toast.memoryLinkedMission', undefined, { name: parentName }));
         }
 
       } else if (currentActiveTab === 'marcador') {
@@ -2685,7 +2711,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           refreshPinAppearance(editing);
           refreshPinPopup(editing);
-          showToast(`Marcador "${marcadorTitle}" atualizado.`);
+          showToast(t('map.toast.markerUpdated', undefined, { title: marcadorTitle }));
         } else {
           const newData = {
             id: newFeatureId('mar'),
@@ -2693,7 +2719,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lng: center.lng,
             titulo: marcadorTitle,
             descricao: marcadorDesc,
-            status: 'Ativo',
+            status: t('map.statusActive'),
             categoria: categoriaKey(marcadorCat),
             categoriaLabel: marcadorCat,
             badgeClass,
@@ -2714,7 +2740,7 @@ document.addEventListener('DOMContentLoaded', () => {
           registerMapItem('marcador', newData, marker);
           applyFilters();
 
-          showToast(`Marcador "${marcadorTitle}" adicionado no ponto escolhido.`);
+          showToast(t('map.toast.markerAdded', undefined, { title: marcadorTitle }));
         }
 
       } else if (currentActiveTab === 'totem') {
@@ -2747,7 +2773,7 @@ document.addEventListener('DOMContentLoaded', () => {
     placeState.shape = null;
     placeState.pickingInside = false;
     placeState.latlng = parent.marker.getLatLng();
-    if (modalTitleEl) modalTitleEl.textContent = 'Nova memória';
+    if (modalTitleEl) modalTitleEl.textContent = t('map.modal.newMemory');
     if (modalTabsEl) modalTabsEl.classList.add('hidden');
     setActiveTab('memoria');
     setMemoryVinculo(kind, parent.data.titulo);
@@ -2759,7 +2785,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (creationModal) {
       placeState.type = 'mutirao';
       placeState.latlng = map.getCenter();
-      if (modalTitleEl) modalTitleEl.textContent = 'Vincular mutirão';
+      if (modalTitleEl) modalTitleEl.textContent = t('map.modal.linkWorkParty');
       if (modalTabsEl) modalTabsEl.classList.add('hidden');
       openModal();
       setActiveTab('mutirao');
@@ -2768,7 +2794,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (selectMutirao) {
         selectMutirao.focus();
       }
-      showToast(`Selecione o mutirão existente para associar à missão "${missaoTitulo}"`);
+      showToast(t('map.toast.selectWorkPartyFor', undefined, { title: missaoTitulo }));
     }
   };
 
@@ -2816,10 +2842,10 @@ document.addEventListener('DOMContentLoaded', () => {
       container.innerHTML = state.map((fala, i) => `
         <div class="totem-fala-row" data-fala-index="${i}">
           <div class="totem-fala-row-header">
-            <span>Fala ${i + 1}</span>
-            <button type="button" class="row-remove-btn" data-remove-fala="${i}">Remover</button>
+            <span>${t('map.q.lineN', undefined, { n: i + 1 })}</span>
+            <button type="button" class="row-remove-btn" data-remove-fala="${i}">${t('common.remove')}</button>
           </div>
-          <textarea class="form-textarea totem-fala-texto" rows="2" placeholder="Ex: Bem-vinda à serra. Siga até o mirante." data-fala-texto="${i}">${escapeHtml(fala.texto || '')}</textarea>
+          <textarea class="form-textarea totem-fala-texto" rows="2" placeholder="${t('map.q.linePh')}" data-fala-texto="${i}">${escapeHtml(fala.texto || '')}</textarea>
         </div>
       `).join('') || '<p class="figital-empty-state">Nenhuma fala ainda. Adicione a primeira.</p>';
 
@@ -2881,41 +2907,41 @@ document.addEventListener('DOMContentLoaded', () => {
       const linhas = perguntas.map((p, j) => `
         <div class="form-perg-row" data-pergunta-row data-perg="${j}" data-pergunta-id="${escapeHtml(p.id || '')}" style="border:1px solid var(--border-subtle,#e2e8f0); border-radius:8px; padding:8px; margin-top:8px;">
           <div class="totem-insumo-row-header">
-            <span>Pergunta ${j + 1}</span>
-            <button type="button" class="row-remove-btn" data-remove-pergunta data-perg="${j}">Remover</button>
+            <span>${t('map.q.questionN', undefined, { n: j + 1 })}</span>
+            <button type="button" class="row-remove-btn" data-remove-pergunta data-perg="${j}">${t('common.remove')}</button>
           </div>
           <label class="totem-insumo-field" style="grid-column:1/-1">
-            <span>Pergunta</span>
-            <input type="text" class="form-input" data-perg-field="enunciado" value="${escapeHtml(p.enunciado || '')}" placeholder="Ex: Como está a nascente hoje?" />
+            <span>${t('map.q.question')}</span>
+            <input type="text" class="form-input" data-perg-field="enunciado" value="${escapeHtml(p.enunciado || '')}" placeholder="${t('map.q.questionPh')}" />
           </label>
           <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end; margin-top:6px;">
             <label class="totem-insumo-field">
-              <span>Tipo</span>
+              <span>${t('map.q.type')}</span>
               <select class="form-select" data-perg-field="tipo" data-perg="${j}">
-                <option value="multipla" ${p.tipo !== 'aberta' ? 'selected' : ''}>Múltipla (a/b/c/d)</option>
-                <option value="aberta" ${p.tipo === 'aberta' ? 'selected' : ''}>Resposta escrita</option>
+                <option value="multipla" ${p.tipo !== 'aberta' ? 'selected' : ''}>${t('map.q.multiple')}</option>
+                <option value="aberta" ${p.tipo === 'aberta' ? 'selected' : ''}>${t('map.q.written')}</option>
               </select>
             </label>
             <label class="percurso-toggle" style="font-size:0.76rem">
               <input type="checkbox" data-perg-field="obrigatoria" ${p.obrigatoria !== false ? 'checked' : ''} />
-              <span>Obrigatória</span>
+              <span>${t('map.q.requiredF')}</span>
             </label>
           </div>
           ${p.tipo !== 'aberta' ? `
           <div class="form-perg-opcoes" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
             ${[0, 1, 2, 3].map(k => `
               <label class="totem-insumo-field">
-                <span>Alternativa ${LETRAS[k]}</span>
+                <span>${t('map.q.alternative', undefined, { letter: LETRAS[k] })}</span>
                 <input type="text" class="form-input" data-perg-field="opcao" data-opt="${k}" value="${escapeHtml((p.opcoes && p.opcoes[k]) || '')}" />
               </label>`).join('')}
           </div>` : ''}
         </div>
-      `).join('') || '<p class="figital-empty-state">Nenhuma pergunta ainda.</p>';
+      `).join('') || `<p class="figital-empty-state">${t('map.q.none')}</p>`;
       return `
         <div class="form-perg-editor" style="grid-column:1/-1">
           <div class="percurso-totens-header">
-            <label class="form-label">Perguntas do formulário</label>
-            <button type="button" class="btn-link-add" data-add-pergunta>Adicionar pergunta</button>
+            <label class="form-label">${t('map.q.formQuestions')}</label>
+            <button type="button" class="btn-link-add" data-add-pergunta>${t('map.q.addQuestion')}</button>
           </div>
           ${linhas}
         </div>`;
@@ -2926,50 +2952,50 @@ document.addEventListener('DOMContentLoaded', () => {
       container.innerHTML = state.map((item, i) => `
         <div class="totem-insumo-row" data-insumo-index="${i}">
           <div class="totem-insumo-row-header">
-            <span>Item ${i + 1}</span>
-            <button type="button" class="row-remove-btn" data-remove-insumo="${i}">Remover</button>
+            <span>${t('map.q.itemN', undefined, { n: i + 1 })}</span>
+            <button type="button" class="row-remove-btn" data-remove-insumo="${i}">${t('common.remove')}</button>
           </div>
           <div class="totem-insumo-row-fields">
             <label class="totem-insumo-field">
-              <span>Tipo</span>
+              <span>${t('map.q.type')}</span>
               <select class="form-select" data-insumo-field="tipo" data-index="${i}">
-                ${TIPOS_INSUMO.map(t => `<option value="${t}" ${item.tipo === t ? 'selected' : ''}>${TIPO_INSUMO_LABEL[t]}</option>`).join('')}
+                ${TIPOS_INSUMO.map(tp => `<option value="${tp}" ${item.tipo === tp ? 'selected' : ''}>${TIPO_INSUMO_LABEL[tp]}</option>`).join('')}
               </select>
             </label>
             <label class="totem-insumo-field">
-              <span>Onde aparece</span>
+              <span>${t('map.q.whereShown')}</span>
               <select class="form-select" data-insumo-field="visibilidade" data-index="${i}">
-                <option value="${VISIBILIDADE_INSUMO.INTERNO}" ${item.visibilidade === VISIBILIDADE_INSUMO.INTERNO ? 'selected' : ''}>Só internamente</option>
-                <option value="${VISIBILIDADE_INSUMO.MAPA_PUBLICO}" ${item.visibilidade === VISIBILIDADE_INSUMO.MAPA_PUBLICO ? 'selected' : ''}>No mapa público</option>
+                <option value="${VISIBILIDADE_INSUMO.INTERNO}" ${item.visibilidade === VISIBILIDADE_INSUMO.INTERNO ? 'selected' : ''}>${t('map.q.internalOnly')}</option>
+                <option value="${VISIBILIDADE_INSUMO.MAPA_PUBLICO}" ${item.visibilidade === VISIBILIDADE_INSUMO.MAPA_PUBLICO ? 'selected' : ''}>${t('map.q.publicMap')}</option>
               </select>
             </label>
             <label class="totem-insumo-field" style="grid-column: 1 / -1">
-              <span>Rótulo</span>
-              <input type="text" class="form-input" data-insumo-field="rotulo" data-index="${i}" value="${escapeHtml(item.rotulo || '')}" placeholder="${item.tipo === 'formulario' ? 'Ex: Responder formulário' : 'Ex: Foto do vale'}" />
+              <span>${t('map.q.label')}</span>
+              <input type="text" class="form-input" data-insumo-field="rotulo" data-index="${i}" value="${escapeHtml(item.rotulo || '')}" placeholder="${item.tipo === 'formulario' ? t('map.insumo.phForm') : t('map.insumo.phPhoto')}" />
             </label>
             <label class="percurso-toggle" style="font-size:0.76rem">
               <input type="checkbox" data-insumo-field="obrigatorio" data-index="${i}" ${item.obrigatorio ? 'checked' : ''} />
-              <span>Obrigatório</span>
+              <span>${t('map.q.required')}</span>
             </label>
           </div>
           <div class="totem-insumo-row-extra">
             ${item.tipo === 'formulario' ? perguntasEditorHtml(item) : `
             <label class="totem-insumo-field">
-              <span>Grupo</span>
-              <input type="text" class="form-input" data-insumo-field="grupoId" data-index="${i}" value="${escapeHtml(item.grupoId || '')}" placeholder="Opcional" />
+              <span>${t('map.q.group')}</span>
+              <input type="text" class="form-input" data-insumo-field="grupoId" data-index="${i}" value="${escapeHtml(item.grupoId || '')}" placeholder="${t('common.optional')}" />
             </label>
             <label class="totem-insumo-field">
-              <span>Mínimo no grupo</span>
+              <span>${t('map.q.minInGroup')}</span>
               <input type="number" class="form-input" min="1" data-insumo-field="minimoGrupo" data-index="${i}" value="${item.minimoGrupo ?? ''}" placeholder="Ex: 1" />
             </label>
             ${item.tipo === 'gps' ? `
             <label class="totem-insumo-field">
-              <span>Raio em metros</span>
+              <span>${t('map.q.radiusMeters')}</span>
               <input type="number" class="form-input" min="1" data-insumo-field="raioMetros" data-index="${i}" value="${item.validacao?.distanciaMaximaM ?? 80}" />
             </label>
             <label class="percurso-toggle" style="font-size:0.76rem">
               <input type="checkbox" data-insumo-field="gpsObrigatorio" data-index="${i}" ${item.validacao?.gpsObrigatorio ? 'checked' : ''} />
-              <span>GPS obrigatório</span>
+              <span>${t('map.q.gpsRequired')}</span>
             </label>` : ''}`}
           </div>
         </div>
@@ -3272,22 +3298,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function deleteCopy(kind) {
     return {
-      missao: 'Excluir esta missão? Isso não pode ser desfeito.',
-      mutirao: 'Excluir este mutirão? Isso não pode ser desfeito.',
-      memoria: 'Excluir esta memória? Isso não pode ser desfeito.',
-      marcador: 'Excluir este marcador? Isso não pode ser desfeito.',
-      totem: 'Excluir este totem? Isso não pode ser desfeito.'
-    }[kind] || 'Excluir este item? Isso não pode ser desfeito.';
+      missao: t('map.delete.mission'),
+      mutirao: t('map.delete.workParty'),
+      memoria: t('map.delete.memory'),
+      marcador: t('map.delete.marker'),
+      totem: t('map.delete.totem')
+    }[kind] || t('map.delete.item');
   }
 
   function toastDeleted(kind) {
     return {
-      missao: 'Missão excluída.',
-      mutirao: 'Mutirão excluído.',
-      memoria: 'Memória excluída.',
-      marcador: 'Marcador excluído.',
-      totem: 'Totem excluído.'
-    }[kind] || 'Item excluído.';
+      missao: t('map.deleted.mission'),
+      mutirao: t('map.deleted.workParty'),
+      memoria: t('map.deleted.memory'),
+      marcador: t('map.deleted.marker'),
+      totem: t('map.deleted.totem')
+    }[kind] || t('map.deleted.item');
   }
 
   function removeFromLayer(entry) {
@@ -3450,7 +3476,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setMemoryVinculo(parent.kind, parent.titulo);
       closeMemoryModal();
     }
-    if (modalTitleEl) modalTitleEl.textContent = EDIT_TITLES[kind] || 'Editar';
+    if (modalTitleEl) modalTitleEl.textContent = EDIT_TITLES[kind] || t('map.edit');
     if (modalTabsEl) modalTabsEl.classList.add('hidden');
     setActiveTab(kind);
     openModal();
@@ -3477,8 +3503,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const helper = document.getElementById('totem-papel-helper');
     if (!helper) return;
     helper.textContent = getTotemPapel() === PAPEL_TOTEM.INICIO
-      ? 'Só pode haver um totem de início neste percurso.'
-      : 'Todo percurso precisa de um totem de início.';
+      ? t('map.route.onlyOneStart')
+      : t('map.form.roleHelper');
   }
 
   function validateTotemNome() {
@@ -3577,13 +3603,13 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       shapeRecord = placeState.shape || selection.record;
       if (!shapeRecord) {
-        showToast('Selecione uma trilha ou área antes de adicionar um totem.');
+        showToast(t('map.toast.selectTrailFirst'));
         return false;
       }
       percurso = getOrCreatePercursoForShape(shapeRecord);
     }
     if (!percurso) {
-      showToast('Não foi possível localizar o percurso deste totem.');
+      showToast(t('map.toast.routeNotFound'));
       return false;
     }
 
@@ -3591,7 +3617,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (papel === PAPEL_TOTEM.INICIO) {
       const outroInicio = (percurso.totens || []).find(t => t.papel === PAPEL_TOTEM.INICIO && t.id !== editingTotemId);
       if (outroInicio) {
-        showToast(`Este percurso já tem um totem de início ("${outroInicio.nome}"). Troque o tipo ou edite o outro.`);
+        showToast(t('map.toast.alreadyHasStart', undefined, { name: outroInicio.nome }));
         return false;
       }
     }
@@ -3631,7 +3657,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     refreshFigitalPanel();
     scheduleSave();
-    showToast(isEditing ? `Totem "${nome}" atualizado.` : `Totem "${nome}" criado no ponto escolhido.`);
+    showToast(isEditing ? t('map.toast.totemUpdated', undefined, { name: nome }) : t('map.toast.totemCreated', undefined, { name: nome }));
     editingTotemId = null;
     totemFalasBuilder.set([]);
     return true;
@@ -3687,7 +3713,7 @@ document.addEventListener('DOMContentLoaded', () => {
     missao.qr = { url, assinatura, geradoEm: new Date().toISOString() };
     // Handoff: grava a missão (formato do app) no Supabase para o app buscar por ID.
     const salvo = await upsertMissaoParaApp(missao, missao.cenario);
-    if (!salvo.ok) showToast(salvo.message || 'QR gerado, mas a missão não foi salva para o app.');
+    if (!salvo.ok) showToast(salvo.message || t('map.toast.qrMissionNotSaved'));
     try {
       const dataUrl = await QRCode.toDataURL(url, { width: 260, margin: 1 });
       const target = document.getElementById(`qr-preview-missao-${missaoId}`);
@@ -3701,9 +3727,9 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
       }
-      showToast(`QR gerado para "${missao.titulo}".`);
+      showToast(t('map.toast.qrGeneratedFor', undefined, { name: missao.titulo }));
     } catch (err) {
-      showToast('Não foi possível gerar o QR agora.');
+      showToast(t('map.toast.qrFail'));
     }
   };
 
@@ -3737,10 +3763,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
       }
-      showToast(`QR gerado para "${totem.nome}".`);
+      showToast(t('map.toast.qrGeneratedFor', undefined, { name: totem.nome }));
       refreshFigitalPanel();
     } catch (err) {
-      showToast('Não foi possível gerar o QR agora.');
+      showToast(t('map.toast.qrFail'));
     }
   };
 
@@ -3780,7 +3806,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (countEl) countEl.textContent = String((percurso.totens || []).length);
     if (!container) return;
     if (!percurso.totens.length) {
-      container.innerHTML = '<p class="figital-empty-state">Nenhum totem ainda. Use o "+" da forma para adicionar.</p>';
+      container.innerHTML = `<p class="figital-empty-state">${t('map.route.noTotems')}</p>`;
       return;
     }
     container.innerHTML = percurso.totens.map(t => `
@@ -3858,7 +3884,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPercursoVisibilidadeAviso(percurso);
     refreshFigitalPanel();
     scheduleSave();
-    showToast('Percurso salvo.');
+    showToast(t('map.toast.routeSaved'));
   }
 
   if (btnShapePercurso) {
@@ -3925,7 +3951,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? 'Público: qualquer pessoa vê a geometria e pode iniciar jornada nos percursos ativos (RN-FIG-006).'
             : 'Privado: só quem colabora no mapa vê a geometria e inicia jornada de teste (RN-FIG-006).';
         }
-        showToast(`Mapa marcado como ${mapaVisibilidade === 'publico' ? 'público' : 'privado'}.`);
+        showToast(mapaVisibilidade === 'publico' ? t('map.toast.mapMarkedPublic') : t('map.toast.mapMarkedPrivate'));
         refreshFigitalPanel();
         scheduleSave();
         if (selection.record) renderPercursoVisibilidadeAviso(getPercursoForShape(selection.record) || { ativo: false });
@@ -3983,7 +4009,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExportGeojson) {
     btnExportGeojson.addEventListener('click', () => {
       downloadBlob(JSON.stringify(shapesToGeoJson(), null, 2), 'figital-mapa.geojson', 'application/geo+json');
-      showToast('GeoJSON exportado.');
+      showToast(t('map.toast.geojsonExported'));
     });
   }
 
@@ -4000,7 +4026,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
       downloadBlob(csv, 'figital-totens.csv', 'text/csv');
-      showToast('CSV exportado.');
+      showToast(t('map.toast.csvExported'));
     });
   }
 
@@ -4111,16 +4137,13 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshFigitalPanel();
     if (typeof applyFilters === 'function') applyFilters();
 
-    // Reenquadra o mapa sobre as formas carregadas (se houver).
-    if (desenhos.length) {
-      const group = L.featureGroup(desenhos.map(r => r.layer));
-      const refit = () => {
-        map.invalidateSize();
-        map.fitBounds(group.getBounds(), { padding: [40, 40] });
-      };
-      refit();
-      setTimeout(refit, 300);
-    }
+    // Piloto em Berlim: não reenquadra nas formas carregadas; mantém a vista de Berlim.
+    const refit = () => {
+      map.invalidateSize();
+      map.setView([initialLat, initialLng], initialZoom);
+    };
+    refit();
+    setTimeout(refit, 300);
 
     hydrating = false;
   }
@@ -4164,8 +4187,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function openLogin(target = null) {
       pendingAuthTarget = target;
       loginSubtitle.textContent = target
-        ? 'Entre para editar o mapa.'
-        : 'Entre para criar e editar no mapa colaborativo.';
+        ? t('map.login.subtitleEdit')
+        : t('map.login.subtitle');
       loginError.hidden = true;
       loginScreen.classList.remove('hidden');
       appContainer?.setAttribute('inert', '');
@@ -4212,18 +4235,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const email = emailInput.value.trim();
       const password = passwordInput.value;
       if (!email || !password) {
-        loginError.textContent = 'Informe e-mail e senha.';
+        loginError.textContent = t('map.login.fillBoth');
         loginError.hidden = false;
         return;
       }
 
       loginError.hidden = true;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Entrando...';
+      submitBtn.textContent = t('map.login.signingIn');
 
       const result = await signIn(email, password);
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Entrar';
+      submitBtn.textContent = t('map.login');
 
       if (!result.ok) {
         loginError.textContent = result.message;
@@ -4235,7 +4258,7 @@ document.addEventListener('DOMContentLoaded', () => {
       isAuthenticated = true;
       updateAuthUi();
       closeLogin();
-      showToast('Você entrou. Agora pode editar o mapa.');
+      showToast(t('map.loggedIn'));
       const target = pendingAuthTarget;
       pendingAuthTarget = null;
       if (target?.isConnected) target.click();

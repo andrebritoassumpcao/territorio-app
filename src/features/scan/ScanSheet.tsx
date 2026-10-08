@@ -4,6 +4,7 @@ import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useRota } from '../../ui/rota';
 import { useAviso } from '../../ui/aviso';
+import { useT } from '../../i18n/I18nProvider';
 
 interface Props {
   onFechar: () => void;
@@ -19,6 +20,7 @@ export default function ScanSheet({ onFechar }: Props) {
   const lidoRef = useRef(false);
   const { navegar } = useRota();
   const avisar = useAviso();
+  const { t } = useT();
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function ScanSheet({ onFechar }: Props) {
         if (!ativo) controls.stop();
       })
       .catch(() => {
-        setErro('Não foi possível abrir a câmera. Permita o acesso à câmera ou aponte a câmera do seu celular diretamente para o QR.');
+        setErro(t('scan.cameraError'));
       });
 
     return () => {
@@ -58,11 +60,11 @@ export default function ScanSheet({ onFechar }: Props) {
     }
     onFechar();
     if (caminho && caminho.startsWith('/m/')) navegar(caminho);
-    else avisar('Este QR não é de uma missão ou totem do Território.');
+    else avisar(t('scan.notTerritorio'));
   }
 
   return (
-    <Sheet aberto onFechar={onFechar} titulo="Escanear QR" cor="var(--color-missao)">
+    <Sheet aberto onFechar={onFechar} titulo={t('scan.title')} cor="var(--color-missao)">
       {erro ? (
         <div className="scanner-erro">
           <Icone nome="qr-code" tamanho={32} />
@@ -74,7 +76,7 @@ export default function ScanSheet({ onFechar }: Props) {
             <video ref={videoRef} className="scanner__video" muted playsInline />
             <div className="scanner__mira" aria-hidden="true" />
           </div>
-          <p className="scanner__dica">Aponte a câmera para o QR da missão ou totem.</p>
+          <p className="scanner__dica">{t('scan.aim')}</p>
         </div>
       )}
     </Sheet>

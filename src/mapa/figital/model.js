@@ -13,6 +13,8 @@
    no contrato da API (percursos, totens, manifest).
    ========================================================================== */
 
+import { t } from '../../i18n/idioma';
+
 // ---------------------------------------------------------------------------
 // Enumerações
 // ---------------------------------------------------------------------------
@@ -30,9 +32,9 @@ export const PAPEIS_TOTEM = Object.freeze([
 ]);
 
 export const PAPEL_TOTEM_LABEL = Object.freeze({
-  [PAPEL_TOTEM.INICIO]: 'Início',
-  [PAPEL_TOTEM.INTERMEDIARIO]: 'Ponto específico',
-  [PAPEL_TOTEM.FIM]: 'Fim'
+  [PAPEL_TOTEM.INICIO]: t('map.form.roleStart'),
+  [PAPEL_TOTEM.INTERMEDIARIO]: t('map.form.roleMid'),
+  [PAPEL_TOTEM.FIM]: t('map.form.roleEnd')
 });
 
 export const MODO_PERCURSO = Object.freeze({
@@ -55,13 +57,13 @@ export const TIPO_INSUMO = Object.freeze({
 export const TIPOS_INSUMO = Object.freeze(Object.values(TIPO_INSUMO));
 
 export const TIPO_INSUMO_LABEL = Object.freeze({
-  [TIPO_INSUMO.FOTO]: 'Foto',
-  [TIPO_INSUMO.VIDEO]: 'Vídeo',
-  [TIPO_INSUMO.AUDIO]: 'Áudio',
-  [TIPO_INSUMO.TEXTO]: 'Texto',
-  [TIPO_INSUMO.GPS]: 'GPS / check-in',
-  [TIPO_INSUMO.FORMULARIO]: 'Formulário',
-  [TIPO_INSUMO.MEMORIA]: 'Memória'
+  [TIPO_INSUMO.FOTO]: t('map.insumo.photo'),
+  [TIPO_INSUMO.VIDEO]: t('map.insumo.video'),
+  [TIPO_INSUMO.AUDIO]: t('map.insumo.audio'),
+  [TIPO_INSUMO.TEXTO]: t('map.insumo.text'),
+  [TIPO_INSUMO.GPS]: t('map.insumo.gps'),
+  [TIPO_INSUMO.FORMULARIO]: t('map.insumo.form'),
+  [TIPO_INSUMO.MEMORIA]: t('map.insumo.memory')
 });
 
 export const VISIBILIDADE_INSUMO = Object.freeze({

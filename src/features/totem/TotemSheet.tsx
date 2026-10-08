@@ -1,7 +1,7 @@
 import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useAcervo } from '../../store/useAcervo';
-import { PAPEL_ROTULO } from '../jornada/rotulos';
+import { useT } from '../../i18n/I18nProvider';
 import OuvirNpc from '../npc/OuvirNpc';
 
 interface Props {
@@ -15,7 +15,8 @@ interface Props {
 // oferece deixar uma memória com comentário.
 export default function TotemSheet({ totemId, onFechar, onDeixarMemoria, onOuvirNpc }: Props) {
   const { totens, memorias } = useAcervo();
-  const totem = totens.find((t) => t.id === totemId);
+  const { t: traduzir } = useT();
+  const totem = totens.find((x) => x.id === totemId);
   if (!totem) return null;
 
   const memoriasDoTotem = memorias.filter((m) => m.totemId === totemId);
@@ -23,24 +24,24 @@ export default function TotemSheet({ totemId, onFechar, onDeixarMemoria, onOuvir
   return (
     <Sheet aberto onFechar={onFechar} titulo={totem.nome} cor="var(--color-totem)">
       <span className="chip chip--totem">
-        <Icone nome="map-pin" tamanho={14} /> {PAPEL_ROTULO[totem.papel]}
+        <Icone nome="map-pin" tamanho={14} /> {traduzir(`totemRole.${totem.papel}`)}
       </span>
 
       {totem.roteiroNpc && <OuvirNpc npc={totem.roteiroNpc} alvo="totem" onOuvir={onOuvirNpc} />}
 
       <section className="bloco">
-        <h3 className="bloco__titulo">Sobre este ponto</h3>
+        <h3 className="bloco__titulo">{traduzir('totem.about')}</h3>
         <p className="bloco__texto">{totem.descricao}</p>
       </section>
 
       {memoriasDoTotem.length > 0 && (
         <section className="bloco">
-          <h3 className="bloco__titulo">Memórias deixadas aqui</h3>
+          <h3 className="bloco__titulo">{traduzir('totem.memoriesHere')}</h3>
           <ul className="mini-memorias">
             {memoriasDoTotem.map((m) => (
               <li key={m.id} className="mini-memoria">
                 <Icone nome="message" tamanho={16} />
-                <span><strong>{m.titulo}</strong> — {m.descricao || 'sem comentário'}</span>
+                <span><strong>{m.titulo}</strong>{m.descricao ? ` — ${m.descricao}` : ''}</span>
               </li>
             ))}
           </ul>
@@ -48,7 +49,7 @@ export default function TotemSheet({ totemId, onFechar, onDeixarMemoria, onOuvir
       )}
 
       <button type="button" className="botao-primario botao-primario--totem" onClick={() => onDeixarMemoria(totemId)}>
-        <Icone nome="camera" tamanho={18} /> Deixar uma memória
+        <Icone nome="camera" tamanho={18} /> {traduzir('totem.leaveMemory')}
       </button>
     </Sheet>
   );

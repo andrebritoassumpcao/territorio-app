@@ -3,6 +3,7 @@ import Sheet from '../../ui/Sheet';
 import Icone from '../../ui/Icone';
 import { useAcervo } from '../../store/useAcervo';
 import { salvarMemoria } from '../../data/memorias';
+import { useT } from '../../i18n/I18nProvider';
 import type { Insignia, VinculoMemoria } from '../../types';
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
 // `localStorage`, para a jornada do participante funcionar na hora e offline.
 export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
   const { missoes, totens, perfil, adicionarMemoria } = useAcervo();
+  const { t } = useT();
   const missao = vinculo.tipo === 'missao' ? missoes.find((m) => m.id === vinculo.id) : undefined;
   const totem = vinculo.tipo === 'totem' ? totens.find((t) => t.id === vinculo.id) : undefined;
   const [titulo, setTitulo] = useState('');
@@ -81,15 +83,15 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
   const podeSalvar = (titulo.trim() !== '' || descricao.trim() !== '') && consentido && !enviando;
 
   return (
-    <Sheet aberto onFechar={onFechar} titulo="Deixar memória" cor="var(--color-memoria)">
+    <Sheet aberto onFechar={onFechar} titulo={t('memory.title')} cor="var(--color-memoria)">
       {missao && (
         <span className="chip chip--missao">
-          <Icone nome="trophy" tamanho={13} /> Na missão {missao.titulo}
+          <Icone nome="trophy" tamanho={13} /> {t('memory.onMission', { name: missao.titulo })}
         </span>
       )}
       {totem && (
         <span className="chip chip--totem">
-          <Icone nome="map-pin" tamanho={13} /> No ponto {totem.nome}
+          <Icone nome="map-pin" tamanho={13} /> {t('memory.atSpot', { name: totem.nome })}
         </span>
       )}
 
@@ -98,38 +100,38 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
           {!foto && (
             <span className="foto-drop__vazio">
               <Icone nome="camera" tamanho={24} />
-              <span>Foto (opcional)</span>
+              <span>{t('memory.photoOptional')}</span>
             </span>
           )}
         </div>
         <div className="foto-acoes">
           <button type="button" className="foto-acao" onClick={() => inputCamera.current?.click()}>
-            <Icone nome="camera" tamanho={16} /> {foto ? 'Refazer foto' : 'Tirar foto'}
+            <Icone nome="camera" tamanho={16} /> {foto ? t('memory.retakePhoto') : t('memory.takePhoto')}
           </button>
           <button type="button" className="foto-acao" onClick={() => inputGaleria.current?.click()}>
-            <Icone nome="image" tamanho={16} /> Galeria
+            <Icone nome="image" tamanho={16} /> {t('memory.gallery')}
           </button>
         </div>
         <input ref={inputCamera} type="file" accept="image/*" capture="environment" hidden onChange={escolherFoto} />
         <input ref={inputGaleria} type="file" accept="image/*" hidden onChange={escolherFoto} />
 
         <label className="campo">
-          <span className="campo__label">Título</span>
+          <span className="campo__label">{t('memory.fieldTitle')}</span>
           <input
             type="text"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Ex.: Vista do mirante"
+            placeholder={t('memory.titlePlaceholder')}
             maxLength={80}
           />
         </label>
 
         <label className="campo">
-          <span className="campo__label">Comentário</span>
+          <span className="campo__label">{t('memory.comment')}</span>
           <textarea
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            placeholder={missao ? 'Conte como foi este momento da missão…' : 'Escreva o que você quer registrar deste lugar…'}
+            placeholder={missao ? t('memory.commentPlaceholderMission') : t('memory.commentPlaceholderTotem')}
             rows={3}
             maxLength={280}
           />
@@ -141,11 +143,11 @@ export default function MemoriaForm({ vinculo, onFechar, onSalva }: Props) {
             checked={consentido}
             onChange={(e) => setConsentido(e.target.checked)}
           />
-          <span>Autorizo exibir esta memória publicamente no mapa do Território.</span>
+          <span>{t('memory.consent')}</span>
         </label>
 
         <button type="submit" className="botao-primario botao-primario--memoria" disabled={!podeSalvar}>
-          {enviando ? 'Salvando…' : 'Salvar na jornada'}
+          {enviando ? t('memory.saving') : t('memory.save')}
         </button>
       </form>
     </Sheet>

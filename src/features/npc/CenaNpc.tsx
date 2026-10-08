@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Cenario as TipoCenario, FalaNpc } from '../../types';
 import Icone from '../../ui/Icone';
+import { useT } from '../../i18n/I18nProvider';
 import Cenario from './Cenario';
 
 interface Props {
@@ -26,6 +27,7 @@ function reduzirMovimento(): boolean {
 // Toque em qualquer lugar: se o texto ainda está sendo digitado, completa;
 // senão, avança. A última fala mostra o CTA. "Pular" vai direto ao conteúdo.
 export default function CenaNpc({ nome, falas, cenario, alvo, tituloPonto, cta, onConcluir }: Props) {
+  const { t } = useT();
   const [indice, setIndice] = useState(0);
   const [letras, setLetras] = useState(0);
   const raiz = useRef<HTMLDivElement>(null);
@@ -109,7 +111,7 @@ export default function CenaNpc({ nome, falas, cenario, alvo, tituloPonto, cta, 
               onConcluir();
             }}
           >
-            Pular <Icone nome="chevron-right" tamanho={16} />
+            {t('common.skip')} <Icone nome="chevron-right" tamanho={16} />
           </button>
         </header>
 
@@ -134,7 +136,7 @@ export default function CenaNpc({ nome, falas, cenario, alvo, tituloPonto, cta, 
             </span>
             {!(ultima && !digitando) && (
               <span className="cena__continuar">
-                {digitando ? 'Toque para ver tudo' : 'Toque para continuar'}
+                {digitando ? t('npc.tapToSeeAll') : t('npc.tapToContinue')}
                 <Icone nome="chevron-right" tamanho={16} />
               </span>
             )}
