@@ -564,6 +564,9 @@ body {
   }
 }
 
+/* Scrim do drawer (só aparece no mobile, ativado por JS) */
+.sidebar-scrim { display: none; }
+
 /* --------------------------------------------------------------------------
    MAIN VIEWPORT (Top Bar + Map Area)
    -------------------------------------------------------------------------- */
@@ -2867,6 +2870,87 @@ input[type="color"]::-webkit-color-swatch {
   margin: 0;
 }
 
+/* ==========================================================================
+   RESILIENCE BEACONS — badge do pin, grade do modal, legenda (acordeão), filtro
+   ========================================================================== */
+
+/* Pin: badge do beacon (cor vem inline da família; ícone forçado a branco) */
+.marker-badge.beacon .ds-icon img { filter: brightness(0) invert(1); }
+
+/* Mini-chip reutilizado na grade do modal e na legenda (ícone branco do SVG) */
+.beacon-chip {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.beacon-chip .ds-icon { width: 18px; height: 18px; }
+
+/* Grade do modal — beacons agrupados por família */
+.beacon-grid { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+.beacon-family-group { display: flex; flex-direction: column; gap: 8px; }
+.beacon-family-title {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; color: var(--text-muted);
+}
+.beacon-fam-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.beacon-family-cells { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.beacon-cell {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  border: 2px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 10px; background: white; cursor: pointer; transition: all 0.15s ease;
+}
+.beacon-cell:hover { border-color: var(--text-muted); }
+.beacon-cell:has(input:checked) {
+  border-color: var(--text-main);
+  box-shadow: 0 0 0 1px var(--text-main) inset;
+  background: #f8fafc;
+}
+.beacon-cell input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.beacon-cell-text { display: flex; flex-direction: column; min-width: 0; }
+.beacon-cell-text strong { font-size: 0.85rem; color: var(--text-main); }
+.beacon-cell-text small { font-size: 0.72rem; color: var(--text-muted); line-height: 1.2; }
+
+/* Legenda — acordeão por família */
+.legend-beacons { display: flex; flex-direction: column; gap: 8px; }
+.legend-beacons-title { font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin: 0; }
+.legend-beacons-intro { font-size: 0.74rem; color: var(--text-muted); margin: 0 0 4px; line-height: 1.3; }
+.legend-fam { border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; }
+.legend-fam > summary {
+  display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; user-select: none;
+  padding: 8px 10px; font-size: 0.78rem; font-weight: 700; color: var(--text-main);
+}
+.legend-fam > summary::-webkit-details-marker { display: none; }
+.legend-fam-body { display: flex; flex-direction: column; gap: 10px; padding: 4px 10px 10px; }
+.legend-beacon-row { display: flex; gap: 10px; align-items: flex-start; }
+.legend-beacon-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.legend-beacon-text strong { font-size: 0.8rem; color: var(--text-main); }
+.legend-beacon-q { font-size: 0.74rem; color: var(--text-main); margin: 0; font-style: italic; }
+.legend-beacon-ex { font-size: 0.72rem; color: var(--text-muted); margin: 0; line-height: 1.3; }
+
+/* Filtro — famílias de beacon (liga/desliga) */
+.family-filter { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.filter-beacon-section { margin-top: 4px; }
+.family-row { position: relative; display: flex; align-items: center; gap: var(--space-3); cursor: pointer; font-size: 0.82rem; }
+.family-checkbox { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.family-checkbox:checked + .ds-checkbox-blue { background: var(--color-filter-check); border-color: var(--color-filter-check); }
+.family-checkbox:checked + .ds-checkbox-blue img { display: block; }
+.family-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.family-label { color: var(--text-main); }
+
+/* Card: tag colorida pela família do beacon */
+.card-type-tag.beacon-clima { background: color-mix(in srgb, #f97316 16%, white); color: #c2410c; }
+.card-type-tag.beacon-agua { background: color-mix(in srgb, #2563eb 16%, white); color: #1d4ed8; }
+.card-type-tag.beacon-terra { background: color-mix(in srgb, #84cc16 18%, white); color: #4d7c0f; }
+.card-type-tag.beacon-resposta { background: color-mix(in srgb, #db2777 16%, white); color: #be185d; }
+.card-type-tag.beacon-sistemas { background: color-mix(in srgb, #0d9488 16%, white); color: #0f766e; }
+
 /* Utilities */
 .hidden {
   display: none !important;
@@ -3610,4 +3694,159 @@ textarea:focus-visible,
 
 .profile-menu-logout {
   color: var(--color-feedback-error-solid);
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE MOBILE — o mapa num celular: sidebar vira drawer sobreposto,
+   toolbar quebra em linhas, painéis viram bottom-sheet, alvos de toque ≥44px.
+   Fica no FIM do arquivo de propósito: media query não soma especificidade,
+   então estas regras precisam vir depois das regras-base para prevalecer.
+   (ver docs/DOCUMENTACAO_ATUAL.md §3.2)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Sidebar vira drawer sobreposto — não empurra mais o mapa.
+     `.sidebar.collapsed` e `:not(.collapsed)` têm 0,2,0 para vencer a base. */
+  .sidebar,
+  .sidebar.collapsed {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(82vw, 300px);
+    min-width: 0;
+    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.35);
+    overflow-y: auto;
+    /* Acima da toolbar (1100) e dos pins; abaixo dos modais (2000+) */
+    z-index: 1900;
+  }
+  .sidebar.collapsed { transform: translateX(-100%); }
+  .sidebar:not(.collapsed) { transform: translateX(0); }
+
+  .sidebar-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1850; /* cobre a toolbar (1100) e o top bar; fica abaixo do drawer */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+  }
+  .sidebar-scrim.is-visible { opacity: 1; visibility: visible; }
+
+  /* Com o drawer aberto, a toolbar/sub-barras do mapa somem (senão "furam" o
+     menu por estarem num contexto de empilhamento isolado acima da sidebar) */
+  body.sidebar-open .floating-toolbar,
+  body.sidebar-open .drawing-subbar,
+  body.sidebar-open #marker-subbar {
+    display: none;
+  }
+
+  /* Top bar: libera espaço (a busca é "em breve" nesta visualização) */
+  .top-bar { gap: 10px; padding: 0 12px; }
+  .search-container { display: none; }
+
+  /* Toolbar flutuante: SÓ-ÍCONE e compacta — largura automática, centrada,
+     cabe numa linha. Os rótulos viram nome acessível (aria-label + title). */
+  .floating-toolbar {
+    top: 12px;
+    width: auto;
+    max-width: calc(100% - 16px);
+    flex-wrap: nowrap;   /* só-ícone cabe numa linha; evita colapso vertical */
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+  }
+  .floating-toolbar .tool-split { height: 44px; }
+  /* Esconde o texto do botão; o nome acessível vem do aria-label/title */
+  .floating-toolbar .tool-label { display: none; }
+  /* Botões de ferramenta viram quadrados de toque de 44×44, só com o ícone */
+  .floating-toolbar .tool-btn {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    gap: 0;
+  }
+  .floating-toolbar .tool-split-main {
+    min-width: 40px;
+    height: 44px;
+  }
+  .floating-toolbar .tool-split-chevron { height: 44px; }
+
+  /* Ação principal "Novo Beacon": + verde em destaque (FAB circular) */
+  .floating-toolbar .tool-btn.btn-primary-action {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    box-shadow: 0 4px 14px rgba(31, 122, 76, 0.45);
+  }
+  .floating-toolbar .tool-btn.btn-primary-action .ds-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Sub-barra de desenho (vários itens): largura total e quebra distribuída */
+  .drawing-subbar {
+    width: calc(100% - 16px);
+    max-width: calc(100% - 16px);
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  /* Sub-barra de tipo de ponto (3 itens): compacta, 1 linha, sem esticar */
+  #marker-subbar {
+    width: auto;
+    max-width: calc(100% - 16px);
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .drawing-subbar .draw-btn,
+  #marker-subbar .draw-btn {
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  /* O rótulo "Tipo:/Modo Desenho:" rouba espaço no celular */
+  #marker-subbar .drawing-mode-label,
+  #drawing-subbar .drawing-mode-label { display: none; }
+  .tool-divider { display: none; }
+
+  /* Painéis flutuantes viram bottom-sheet, na zona do polegar */
+  .floating-panel {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-height: 74vh;
+    border-radius: 18px 18px 0 0;
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.25);
+    gap: 14px;
+  }
+
+  /* Alvos de toque: fechar painel e zoom do Leaflet (base usa !important) */
+  .btn-close-panel { width: 40px; height: 40px; }
+  .leaflet-touch .leaflet-control-zoom a,
+  .leaflet-control-zoom a {
+    width: 44px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+  }
+
+  /* Modal de criação: mais respiro para o toque */
+  .beacon-cell { padding: 12px; }
+}
+
+/* Telas bem estreitas: grade de beacons em 1 coluna (leitura confortável) e
+   toolbar ainda mais justa (gaps menores) para caber numa linha */
+@media (max-width: 400px) {
+  .beacon-family-cells { grid-template-columns: 1fr; }
+  .floating-toolbar { gap: 2px; padding: 5px; }
 }

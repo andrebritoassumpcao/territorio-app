@@ -218,7 +218,7 @@ export const MESSAGES: Record<string, Traducao> = {
   'map.select': { en: 'Select', pt: 'Selecionar' },
   'map.moreTools': { en: 'More tools', pt: 'Mais ferramentas' },
   'map.pan': { en: 'Pan', pt: 'Mover' },
-  'map.newMarker': { en: 'New marker', pt: 'Novo Marcador' },
+  'map.newMarker': { en: 'New beacon', pt: 'Novo Beacon' },
   'map.draw': { en: 'Draw', pt: 'Desenhar' },
   'map.filter': { en: 'Filter', pt: 'Filtro' },
   'map.figitalPanel': { en: 'Figital panel', pt: 'Painel Figital' },
@@ -236,7 +236,7 @@ export const MESSAGES: Record<string, Traducao> = {
   'map.type': { en: 'Type:', pt: 'Tipo:' },
   'map.mission': { en: 'Mission', pt: 'Missão' },
   'map.workParty': { en: 'Work party', pt: 'Mutirão' },
-  'map.marker': { en: 'Marker', pt: 'Marcador' },
+  'map.marker': { en: 'Beacon', pt: 'Beacon' },
   'map.totem': { en: 'Totem', pt: 'Totem' },
   'map.addToArea': { en: 'Add to area', pt: 'Adicionar à área' },
   'map.routeSheet': { en: 'Route sheet', pt: 'Ficha do percurso' },
@@ -267,7 +267,7 @@ export const MESSAGES: Record<string, Traducao> = {
   'map.layer.missions': { en: 'Missions', pt: 'Missões' },
   'map.layer.workParties': { en: 'Work parties', pt: 'Mutirões' },
   'map.layer.memories': { en: 'Memories', pt: 'Memórias' },
-  'map.layer.markers': { en: 'Markers', pt: 'Marcadores' },
+  'map.layer.markers': { en: 'Beacons', pt: 'Beacons' },
   'map.layer.totems': { en: 'Totems (Figital)', pt: 'Totens (Figital)' },
   'map.layer.areas': { en: 'Intervention areas', pt: 'Áreas de intervenção' },
   'map.layer.infra': { en: 'Community infrastructure', pt: 'Infraestrutura comunitária' },
@@ -300,6 +300,63 @@ export const MESSAGES: Record<string, Traducao> = {
   'map.legend.markerDesc': { en: 'Points of attention or alerts', pt: 'Pontos de atenção ou alertas' },
   'map.legend.totemLabel': { en: 'Totem:', pt: 'Totem:' },
   'map.legend.totemDesc': { en: 'Figital journey point with QR', pt: 'Ponto de jornada Figital com QR' },
+
+  // Resilience Beacons — famílias, legenda e filtro
+  'map.legend': { en: 'Legend', pt: 'Legenda' },
+  'map.legend.beaconsTitle': { en: 'Resilience Beacons', pt: 'Resilience Beacons' },
+  'map.legend.beaconsIntro': { en: 'Things in the territory that signal resilience to a threat.', pt: 'Coisas no território que sinalizam resiliência a uma ameaça.' },
+  'map.beacon.pick': { en: 'Beacon *', pt: 'Beacon *' },
+  'map.beacon.pickHelp': { en: 'Choose what this point signals resilience to.', pt: 'Escolha a que este ponto sinaliza resiliência.' },
+  'map.beacon.filterLabel': { en: 'Resilience Beacons', pt: 'Resilience Beacons' },
+  'map.beacon.fam.clima': { en: 'Climate', pt: 'Clima' },
+  'map.beacon.fam.agua': { en: 'Water', pt: 'Água' },
+  'map.beacon.fam.terra': { en: 'Land & Nature', pt: 'Terra & Natureza' },
+  'map.beacon.fam.resposta': { en: 'Response & Emergency', pt: 'Resposta & Emergência' },
+  'map.beacon.fam.sistemas': { en: 'Systems & Organisation', pt: 'Sistemas & Organização' },
+  // Cool — calor extremo
+  'map.beacon.cool.hazard': { en: 'Extreme heat', pt: 'Calor extremo' },
+  'map.beacon.cool.question': { en: 'Does the territory offer somewhere to cool down?', pt: 'O território oferece onde se refrescar?' },
+  'map.beacon.cool.examples': { en: 'Cooling zones and rooms, shade and tree cover, drinking fountains.', pt: 'Zonas e salas de resfriamento, sombra e arborização, bebedouros.' },
+  // Warm — frio extremo
+  'map.beacon.warm.hazard': { en: 'Extreme cold', pt: 'Frio extremo' },
+  'map.beacon.warm.question': { en: 'Does the territory offer somewhere to warm up?', pt: 'O território oferece onde se aquecer?' },
+  'map.beacon.warm.examples': { en: 'Cold-weather shelters, warming points.', pt: 'Abrigos de frio, pontos de aquecimento.' },
+  // Absorb — chuva forte e enchente
+  'map.beacon.absorb.hazard': { en: 'Heavy rain and flooding', pt: 'Chuva forte e enchente' },
+  'map.beacon.absorb.question': { en: 'Does rainwater have somewhere to go?', pt: 'A água da chuva tem para onde ir?' },
+  'map.beacon.absorb.examples': { en: 'Rain gardens, permeable areas, drainage, recycling and waste collection points.', pt: 'Jardins de chuva, áreas permeáveis, drenagem, ecopontos e coleta de resíduos.' },
+  // Supply — seca e falta de água
+  'map.beacon.supply.hazard': { en: 'Drought and water shortage', pt: 'Seca e falta de água' },
+  'map.beacon.supply.question': { en: 'Is there water when the network fails?', pt: 'Há água quando a rede falha?' },
+  'map.beacon.supply.examples': { en: 'Emergency pumps and wells, cisterns, rainwater harvesting for reuse.', pt: 'Bombas e poços de emergência, cisternas, captação de chuva para reúso.' },
+  // Hold — deslizamentos e queimadas
+  'map.beacon.hold.hazard': { en: 'Landslides and wildfires', pt: 'Deslizamentos e queimadas' },
+  'map.beacon.hold.question': { en: 'Are the land and vegetation protected?', pt: 'O terreno e a vegetação estão protegidos?' },
+  'map.beacon.hold.examples': { en: 'Slope containment and reforestation, retaining walls, hillside channels, firebreaks.', pt: 'Contenção e reflorestamento de encostas, muros de arrimo, canaletas em morro, aceiros.' },
+  // Grow — insegurança alimentar e perda de natureza
+  'map.beacon.grow.hazard': { en: 'Food insecurity and loss of nature', pt: 'Insegurança alimentar e perda de natureza' },
+  'map.beacon.grow.question': { en: 'Does the territory produce food and nature?', pt: 'O território produz alimento e natureza?' },
+  'map.beacon.grow.examples': { en: 'Community gardens, agroforests.', pt: 'Hortas comunitárias, agroflorestas.' },
+  // Shelter — emergência
+  'map.beacon.shelter.hazard': { en: 'Emergency', pt: 'Emergência' },
+  'map.beacon.shelter.question': { en: 'Do people have somewhere to go and be cared for?', pt: 'As pessoas têm para onde ir e onde ser atendidas?' },
+  'map.beacon.shelter.examples': { en: 'Emergency shelters, meeting points, escape routes, health posts and first aid.', pt: 'Abrigos de emergência, pontos de encontro, rotas de fuga, postos de saúde e primeiros socorros.' },
+  // Share — necessidades básicas durante e depois da crise
+  'map.beacon.share.hazard': { en: 'Basic needs during and after the crisis', pt: 'Necessidades básicas durante e depois da crise' },
+  'map.beacon.share.question': { en: 'Does help reach those who need it?', pt: 'A ajuda chega a quem precisa?' },
+  'map.beacon.share.examples': { en: 'Community kitchens, food and clothing distribution points, donation collection points.', pt: 'Cozinhas comunitárias, pontos de distribuição de comida e roupa, pontos de coleta de doações.' },
+  // Power — queda de energia e de comunicação
+  'map.beacon.power.hazard': { en: 'Power and communication outages', pt: 'Queda de energia e de comunicação' },
+  'map.beacon.power.question': { en: 'Is there energy and communication when the network goes down?', pt: 'Há energia e comunicação quando a rede cai?' },
+  'map.beacon.power.examples': { en: 'Community solar power, community radio, charging points.', pt: 'Energia solar comunitária, rádio comunitário, pontos de recarga.' },
+  // Monitor — ameaças que chegam sem aviso
+  'map.beacon.monitor.hazard': { en: 'Threats that arrive without warning', pt: 'Ameaças que chegam sem aviso' },
+  'map.beacon.monitor.question': { en: 'Does someone notice the risk in time and warn others?', pt: 'Alguém percebe o risco a tempo e avisa?' },
+  'map.beacon.monitor.examples': { en: 'Active monitoring, sensors, cameras, sirens and alert systems.', pt: 'Monitoramento ativo, sensores, câmeras, sirenes e sistemas de alerta.' },
+  // People — isolamento e desorganização
+  'map.beacon.people.hazard': { en: 'Isolation and disorganisation', pt: 'Isolamento e desorganização' },
+  'map.beacon.people.question': { en: 'Are there organised people keeping all this running?', pt: 'Há gente organizada para manter tudo isso funcionando?' },
+  'map.beacon.people.examples': { en: 'Local organisations, brigades, community work parties.', pt: 'Organizações locais, brigadas, mutirões.' },
 
   // Figital panel
   'map.figitalTitle': { en: 'Map panel · Figital', pt: 'Painel do mapa · Figital' },
@@ -376,14 +433,14 @@ export const MESSAGES: Record<string, Traducao> = {
   'map.form.recordDate': { en: 'Record date', pt: 'Data do Registro' },
   'map.form.linkedTo': { en: 'Linked to', pt: 'Ligada a' },
   'map.form.memoryLinkHelp': { en: 'Choose the mission or marker linked to this memory.', pt: 'Escolha a missão ou o marcador ligado a esta memória.' },
-  'map.form.markerDesc': { en: 'Add a point on the map to alert the community or highlight a place of territorial interest.', pt: 'Adicione um ponto no mapa para alertar a comunidade ou destacar um local de interesse territorial.' },
+  'map.form.markerDesc': { en: 'Mark a resilience beacon: something in the territory that answers a climate or social threat. Pick the beacon it represents.', pt: 'Marque um resilience beacon: algo no território que responde a uma ameaça climática ou social. Escolha o beacon que ele representa.' },
   'map.form.markerType': { en: 'Marker type *', pt: 'Tipo de Marcador *' },
   'map.form.alertTitle': { en: 'Community alert', pt: 'Alerta Comunitário' },
   'map.form.alertDesc': { en: 'Litter dumping, risk, flooding or maintenance', pt: 'Descarte de lixo, risco, alagamento ou manutenção' },
   'map.form.poiTitle': { en: 'Point of interest', pt: 'Ponto de Interesse' },
   'map.form.poiDesc': { en: 'Spring, community facility, headquarters or landmark', pt: 'Nascente, equipamento comunitário, sede ou referência' },
-  'map.form.markerTitle': { en: 'Marker title *', pt: 'Título do Marcador *' },
-  'map.form.markerTitlePh': { en: 'E.g. Illegal dumping at the creek bend', pt: 'Ex: Descarte irregular na curva do córrego' },
+  'map.form.markerTitle': { en: 'Beacon title *', pt: 'Título do Beacon *' },
+  'map.form.markerTitlePh': { en: 'E.g. Shade and drinking fountain at the square', pt: 'Ex: Sombra e bebedouro na praça' },
   'map.form.catSeverity': { en: 'Category / Severity', pt: 'Categoria / Severidade' },
   'map.opt.mkFlood': { en: 'Flooding / Standing water', pt: 'Alagamento / Água parada' },
   'map.opt.mkWaste': { en: 'Illegal waste dumping', pt: 'Descarte Irregular de Entulho' },
@@ -411,18 +468,18 @@ export const MESSAGES: Record<string, Traducao> = {
   'map.place.mission': { en: 'Click the map to place the mission.', pt: 'Clique no mapa para posicionar a missão.' },
   'map.place.workParty': { en: 'Click the map to place the work party.', pt: 'Clique no mapa para posicionar o mutirão.' },
   'map.place.memory': { en: 'Click the map to place the memory.', pt: 'Clique no mapa para posicionar a memória.' },
-  'map.place.marker': { en: 'Click the map to place the marker.', pt: 'Clique no mapa para posicionar o marcador.' },
+  'map.place.marker': { en: 'Click the map to place the beacon.', pt: 'Clique no mapa para posicionar o Beacon.' },
 
   // app.js — modal titles
   'map.modal.newMission': { en: 'New mission', pt: 'Nova missão' },
   'map.modal.linkWorkParty': { en: 'Link work party', pt: 'Vincular mutirão' },
   'map.modal.newMemory': { en: 'New memory', pt: 'Nova memória' },
-  'map.modal.newMarker': { en: 'New marker', pt: 'Novo marcador' },
+  'map.modal.newMarker': { en: 'New beacon', pt: 'Novo Beacon' },
   'map.modal.newTotem': { en: 'New totem', pt: 'Novo totem' },
   'map.modal.editMission': { en: 'Edit mission', pt: 'Editar missão' },
   'map.modal.editWorkParty': { en: 'Edit work party', pt: 'Editar mutirão' },
   'map.modal.editMemory': { en: 'Edit memory', pt: 'Editar memória' },
-  'map.modal.editMarker': { en: 'Edit marker', pt: 'Editar marcador' },
+  'map.modal.editMarker': { en: 'Edit beacon', pt: 'Editar Beacon' },
   'map.modal.editTotem': { en: 'Edit totem', pt: 'Editar totem' },
 
   // app.js — delete confirms / toasts
@@ -551,8 +608,8 @@ export const MESSAGES: Record<string, Traducao> = {
   'map.saveMission': { en: 'Save mission', pt: 'Salvar missão' },
   'map.saveWorkParty': { en: 'Save work party', pt: 'Salvar mutirão' },
   'map.saveMemory': { en: 'Save memory', pt: 'Salvar memória' },
-  'map.saveMarker': { en: 'Save marker', pt: 'Salvar marcador' },
-  'map.addMarker': { en: 'Add marker', pt: 'Adicionar Marcador' },
+  'map.saveMarker': { en: 'Save beacon', pt: 'Salvar Beacon' },
+  'map.addMarker': { en: 'Add beacon', pt: 'Adicionar Beacon' },
   'map.statusActive': { en: 'Active', pt: 'Ativo' },
 
   // app.js — input/question editor
