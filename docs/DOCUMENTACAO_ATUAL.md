@@ -76,6 +76,35 @@ src/
     └── memoria/MemoriaForm.tsx # deixar memória (foto + comentário + consentimento); foto sobe ao Supabase Storage
 ```
 
+## 3.1 Mapa — Resilience Beacons (botão "Beacon")
+
+No `mapa.html` o antigo botão "Novo Marcador" virou **"Beacon"**: em vez de um ponto genérico de alerta/interesse, coloca-se um **Resilience Beacon** — algo no território que sinaliza resiliência a uma ameaça climática ou social. São **11 beacons** em **5 famílias** (cor própria + ícone próprio), definidos numa **fonte única** (`BEACONS`/`BEACON_FAMILIES` em `src/mapa/app.js`, função `initBeaconUI`) que gera a grade do modal, a legenda e o filtro:
+
+| Família (cor) | Beacons (ameaça) |
+|---|---|
+| **Clima** `#f97316` | Cool (calor extremo) · Warm (frio extremo) |
+| **Água** `#2563eb` | Absorb (chuva/enchente) · Supply (seca/falta d'água) |
+| **Terra & Natureza** `#84cc16` | Hold (deslizamento/queimada) · Grow (insegurança alimentar) |
+| **Resposta & Emergência** `#db2777` | Shelter (emergência) · Share (necessidades básicas) |
+| **Sistemas & Organização** `#0d9488` | Power (energia/comunicação) · Monitor (ameaça sem aviso) · People (isolamento) |
+
+- **Criar:** subbar Missão / Mutirão / **Beacon** → clica no mapa → o modal mostra os 11 beacons agrupados por família (grade de rádios) + título e observação. O pin usa a **cor da família** e o **ícone do beacon** (ícones Lucide em `public/mapa/icons/`, brancos sobre o badge colorido).
+- **Legenda:** botão na toolbar (`data-panel="legend-panel"`) abre um **acordeão por família** com `Nome — ameaça`, a pergunta-guia e os exemplos de cada beacon.
+- **Filtro:** no painel de filtro, 5 checkboxes de família ligam/desligam os beacons no mapa (funcional).
+- **Textos** (ameaça / pergunta / exemplos) ficam no i18n (`map.beacon.*` em `src/i18n/messages.ts`, pt/en); o nome do beacon (Cool, Absorb…) é termo fixo em inglês.
+- **Internamente** o beacon continua sendo um ponto do tipo `marcador` (layer, loader, card e persistência no `map_state` reaproveitados), agora com os campos `beacon` e `family`. Os antigos sub-tipos "Alerta/Ponto de Interesse" e a categoria de severidade foram **removidos**; marcadores legados sem `beacon` ainda renderizam (pin genérico, fallback não-destrutivo). Beacons são **só do mapa** — não trafegam no handoff de `missoes` para o app.
+
+## 3.2 Mapa — responsividade mobile
+
+O `mapa.html` nasceu desktop; ganhou um bloco responsivo (`@media (max-width: 768px)` e `(max-width: 400px)` **no fim** de `src/mapa/style.css` — media query não soma especificidade, então precisa vir depois das regras-base) focado em uso no celular:
+
+- **Sidebar vira drawer sobreposto:** no celular começa recolhida (JS em `src/mapa/app.js` adiciona `.collapsed` no load se `matchMedia('(max-width: 768px)')`), abre pelo botão de menu da top bar, fica `position: fixed` (não empurra mais o mapa) e tem um **scrim** que fecha ao toque. O drawer fica acima da toolbar (`z-index` 1900, scrim 1850) e, enquanto aberto, a **toolbar/sub-barras ficam `display:none`** (`body.sidebar-open`) — senão furariam o menu por estarem num contexto de empilhamento isolado. No desktop (>768px) nada muda: sidebar estática empurrando o conteúdo.
+- **Toolbar flutuante** fica **só-ícone e compacta** no celular (rótulos viram `aria-label` + `title`/tooltip; botões de **44×44**, uma linha centrada), com a ação principal "Novo Beacon" como um **"+" verde circular em destaque**. O ícone de "Desenhar" passou a ser um lápis (antes estrela). No desktop a toolbar mantém ícone + rótulo.
+- **Sub-barras** (tipo de ponto, desenho) são **posicionadas logo abaixo da toolbar por JS** (`positionSubbarBelowToolbar`, lê a altura real da toolbar) para nunca sobrepor; a de tipo de ponto fica compacta numa linha.
+- **Painéis flutuantes (filtro, legenda, Figital)** viram **bottom-sheet**: ancorados embaixo, largura total, cantos arredondados no topo, até 74vh com rolagem — na zona do polegar.
+- **Busca** da top bar some no celular (é "em breve"); **zoom do Leaflet** sobe para 44px; **grade de beacons** do modal vira 1 coluna em telas ≤400px.
+- Sem rolagem horizontal; `safe-area-inset-bottom` respeitado no bottom-sheet.
+
 ## 4. Rotas
 
 | Caminho | O que mostra |

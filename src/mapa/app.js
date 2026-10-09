@@ -209,7 +209,18 @@ document.addEventListener('DOMContentLoaded', () => {
     totem: '/mapa/icons/star.svg',
     palette: '/mapa/icons/palette.svg',
     pencil: '/mapa/icons/pencil.svg',
-    trash: '/mapa/icons/trash-2.svg'
+    trash: '/mapa/icons/trash-2.svg',
+    // Ícones dos Resilience Beacons (ver BEACONS abaixo)
+    snowflake: '/mapa/icons/snowflake.svg',
+    flame: '/mapa/icons/flame.svg',
+    'cloud-rain': '/mapa/icons/cloud-rain.svg',
+    droplet: '/mapa/icons/droplet.svg',
+    mountain: '/mapa/icons/mountain.svg',
+    tent: '/mapa/icons/tent.svg',
+    'heart-handshake': '/mapa/icons/heart-handshake.svg',
+    zap: '/mapa/icons/zap.svg',
+    siren: '/mapa/icons/siren.svg',
+    'users-round': '/mapa/icons/users-round.svg'
   };
 
   const PIN_COLORS = [
@@ -241,6 +252,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const hex = safeColor(color);
     const style = hex ? ` style="background:${hex}"` : '';
     return `<div class="marker-badge ${type}"${style}>${iconImg(src, 18)}</div>`;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // RESILIENCE BEACONS — o botão "Beacon" (ex-Marcador) coloca um ponto que
+  // sinaliza resiliência do território a uma ameaça. 11 beacons em 5 famílias
+  // de cor + ícone próprio. Esta é a FONTE ÚNICA de verdade: gera a grade do
+  // modal, a legenda (acordeão por família) e o filtro. Internamente o ponto
+  // continua sendo do tipo 'marcador' (layer/loader/card reaproveitados).
+  // Textos (ameaça/pergunta/exemplos) vêm do i18n `map.beacon.<id>.*`.
+  // ───────────────────────────────────────────────────────────────────────
+  const BEACON_FAMILIES = [
+    { id: 'clima', color: '#f97316', labelKey: 'map.beacon.fam.clima' },
+    { id: 'agua', color: '#2563eb', labelKey: 'map.beacon.fam.agua' },
+    { id: 'terra', color: '#84cc16', labelKey: 'map.beacon.fam.terra' },
+    { id: 'resposta', color: '#db2777', labelKey: 'map.beacon.fam.resposta' },
+    { id: 'sistemas', color: '#0d9488', labelKey: 'map.beacon.fam.sistemas' }
+  ];
+  const BEACONS = [
+    { id: 'cool', family: 'clima', icon: 'snowflake', name: 'Cool' },
+    { id: 'warm', family: 'clima', icon: 'flame', name: 'Warm' },
+    { id: 'absorb', family: 'agua', icon: 'cloud-rain', name: 'Absorb' },
+    { id: 'supply', family: 'agua', icon: 'droplet', name: 'Supply' },
+    { id: 'hold', family: 'terra', icon: 'mountain', name: 'Hold' },
+    { id: 'grow', family: 'terra', icon: 'sprout', name: 'Grow' },
+    { id: 'shelter', family: 'resposta', icon: 'tent', name: 'Shelter' },
+    { id: 'share', family: 'resposta', icon: 'heart-handshake', name: 'Share' },
+    { id: 'power', family: 'sistemas', icon: 'zap', name: 'Power' },
+    { id: 'monitor', family: 'sistemas', icon: 'siren', name: 'Monitor' },
+    { id: 'people', family: 'sistemas', icon: 'users-round', name: 'People' }
+  ];
+  const beaconById = (id) => BEACONS.find(b => b.id === id) || null;
+  const familyById = (id) => BEACON_FAMILIES.find(f => f.id === id) || null;
+  function beaconColor(b) {
+    const fam = b && familyById(b.family);
+    return fam ? fam.color : '';
+  }
+  // Badge do pin de um beacon: cor = cor da família, ícone = ícone do beacon.
+  function beaconBadge(beaconId, override) {
+    const b = beaconById(beaconId);
+    const color = safeColor(override) || beaconColor(b);
+    const src = b ? (ICON[b.icon] || ICON.pin) : ICON.pin;
+    const fam = b ? b.family : 'legacy';
+    const style = color ? ` style="background:${color}"` : '';
+    return `<div class="marker-badge beacon beacon-${fam}"${style}>${iconImg(src, 18)}</div>`;
   }
 
   function colorSwatchesHtml(kind, id, selected) {
@@ -1089,11 +1144,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return registerMapItem('memoria', item, marker);
   }
 
+  // Beacon (tipo interno 'marcador'). Com item.beacon usa o badge da família;
+  // itens legados sem beacon caem no pin genérico (fallback não-destrutivo).
   function renderMarcador(item) {
-    const icon = createCustomIcon(
-      typeBadge(item.badgeClass || 'marcador', item.cor),
-      item.titulo
-    );
+    const badge = item.beacon
+      ? beaconBadge(item.beacon, item.cor)
+      : typeBadge(item.badgeClass || 'marcador', item.cor);
+    const icon = createCustomIcon(badge, item.titulo);
     const marker = L.marker([item.lat, item.lng], { icon })
       .bindPopup(buildParentCardHtml('marcador', item), POPUP_OPTS)
       .addTo(layerGroups.marcadores);
@@ -1260,12 +1317,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebarToggleBtn = document.getElementById('btn-sidebar-toggle');
   const topbarSidebarToggleBtn = document.getElementById('btn-topbar-sidebar-toggle');
 
+  // No celular a sidebar vira drawer sobreposto: começa recolhida e usa um
+  // scrim que fecha ao toque (ver @media mobile em style.css).
+  const isMobileViewport = () => window.matchMedia('(max-width: 768px)').matches;
+  const sidebarScrim = document.createElement('div');
+  sidebarScrim.className = 'sidebar-scrim';
+  document.body.appendChild(sidebarScrim);
+  function syncSidebarScrim() {
+    const open = isMobileViewport() && sidebar && !sidebar.classList.contains('collapsed');
+    sidebarScrim.classList.toggle('is-visible', open);
+    // Esconde a toolbar/sub-barras do mapa enquanto o drawer está aberto
+    // (elas vivem num contexto de empilhamento isolado e, mesmo com z-index
+    // menor, "furariam" o menu). Ver body.sidebar-open no CSS.
+    document.body.classList.toggle('sidebar-open', open);
+  }
   function toggleSidebar() {
     sidebar.classList.toggle('collapsed');
+    syncSidebarScrim();
     setTimeout(() => map.invalidateSize(), 300);
   }
   if (sidebarToggleBtn) sidebarToggleBtn.addEventListener('click', toggleSidebar);
   if (topbarSidebarToggleBtn) topbarSidebarToggleBtn.addEventListener('click', toggleSidebar);
+  sidebarScrim.addEventListener('click', () => {
+    if (sidebar) sidebar.classList.add('collapsed');
+    syncSidebarScrim();
+    setTimeout(() => map.invalidateSize(), 300);
+  });
+  // Estado inicial e em mudança de tamanho: recolhida no celular.
+  if (sidebar && isMobileViewport()) sidebar.classList.add('collapsed');
+  window.addEventListener('resize', syncSidebarScrim);
 
   const btnProfile = document.getElementById('btn-profile');
   const profileMenu = document.getElementById('profile-menu');
@@ -1399,6 +1479,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const drawingSubbar = document.getElementById('drawing-subbar');
   const markerSubbar = document.getElementById('marker-subbar');
   const btnNovaMissao = document.getElementById('btn-nova-missao');
+
+  // No celular a toolbar é só-ícone e pode ter altura variável; posicionamos a
+  // sub-barra logo abaixo dela lendo a altura real (evita sobreposição). No
+  // desktop deixa o `top` do CSS valer.
+  const floatingToolbarEl = document.querySelector('.floating-toolbar');
+  function positionSubbarBelowToolbar(subbar) {
+    if (!subbar || !floatingToolbarEl) return;
+    if (!window.matchMedia('(max-width: 768px)').matches) {
+      subbar.style.top = '';
+      return;
+    }
+    const tb = floatingToolbarEl.getBoundingClientRect();
+    const parent = subbar.offsetParent;
+    const parentTop = parent ? parent.getBoundingClientRect().top : 0;
+    subbar.style.top = Math.round(tb.bottom - parentTop + 8) + 'px';
+  }
+  window.addEventListener('resize', () => {
+    if (drawingSubbar && !drawingSubbar.classList.contains('hidden')) positionSubbarBelowToolbar(drawingSubbar);
+    if (markerSubbar && !markerSubbar.classList.contains('hidden')) positionSubbarBelowToolbar(markerSubbar);
+  });
   const shapeActionsEl = document.getElementById('shape-actions');
   const shapeEditPanel = document.getElementById('shape-edit-panel');
   const confirmDeleteEl = document.getElementById('confirm-delete');
@@ -1912,6 +2012,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (willOpen) {
         setMapTool('draw');
         drawingSubbar.classList.remove('hidden');
+        positionSubbarBelowToolbar(drawingSubbar);
         btnDesenhar.classList.add('active');
         const activeBtn = drawingSubbar.querySelector('.draw-btn.active');
         drawState.tool = activeBtn?.getAttribute('data-draw') || 'poligono';
@@ -1951,6 +2052,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (willOpen) {
         setMapTool('place');
         markerSubbar.classList.remove('hidden');
+        positionSubbarBelowToolbar(markerSubbar);
         btnNovaMissao.classList.add('active');
       } else {
         setMapTool('select');
@@ -2167,7 +2269,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const from = parseDisplayDate(filterDateFrom?.value);
     let to = parseDisplayDate(filterDateTo?.value);
     if (to) to = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
-    return { statuses, category: selectedCategory, dateFrom: from, dateTo: to };
+    // Filtro por família de Beacon (liga/desliga cada uma das 5).
+    const familyBoxes = document.querySelectorAll('.family-checkbox');
+    const families = new Set();
+    document.querySelectorAll('.family-checkbox:checked').forEach(chk => {
+      families.add(chk.getAttribute('data-family'));
+    });
+    return {
+      statuses,
+      category: selectedCategory,
+      families,
+      familyFilterActive: familyBoxes.length > 0,
+      dateFrom: from,
+      dateTo: to
+    };
   }
 
   function inDateRange(date, from, to) {
@@ -2189,7 +2304,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (kind === 'memoria') {
       if (!inDateRange(parseDisplayDate(data.data), state.dateFrom, state.dateTo)) return false;
     } else if (kind === 'marcador') {
-      if (state.category !== 'todas' && data.categoria && categoriaKey(data.categoria) !== state.category) {
+      // Beacons filtram por família; marcadores legados (sem beacon) sempre aparecem.
+      if (data.beacon && state.familyFilterActive && !state.families.has(data.family)) {
         return false;
       }
     }
@@ -2267,6 +2383,81 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.filter-status-checkbox').forEach(chk => {
     chk.addEventListener('change', applyFilters);
   });
+
+  // ── Resilience Beacons: gera (da config BEACONS) a grade do modal, o
+  //    acordeão da legenda e os checkboxes de família do filtro. Fonte única.
+  function beaconChip(beacon) {
+    const color = beaconColor(beacon);
+    const src = ICON[beacon.icon] || ICON.pin;
+    return `<span class="beacon-chip" style="background:${color}">${iconImg(src, 16)}</span>`;
+  }
+  function initBeaconUI() {
+    // 1) Grade do modal (radios agrupados por família)
+    const grid = document.getElementById('beacon-grid');
+    if (grid) {
+      grid.innerHTML = BEACON_FAMILIES.map(fam => {
+        const cells = BEACONS.filter(b => b.family === fam.id).map((b, i) => {
+          const checked = (fam.id === BEACON_FAMILIES[0].id && i === 0) ? ' checked' : '';
+          return `
+            <label class="beacon-cell">
+              <input type="radio" name="beacon-id" value="${b.id}"${checked} />
+              ${beaconChip(b)}
+              <span class="beacon-cell-text">
+                <strong>${b.name}</strong>
+                <small>${t(`map.beacon.${b.id}.hazard`)}</small>
+              </span>
+            </label>`;
+        }).join('');
+        return `
+          <div class="beacon-family-group">
+            <p class="beacon-family-title"><span class="beacon-fam-dot" style="background:${fam.color}"></span>${t(fam.labelKey)}</p>
+            <div class="beacon-family-cells">${cells}</div>
+          </div>`;
+      }).join('');
+    }
+
+    // 2) Legenda (acordeão por família; exemplos aparecem ao expandir)
+    const legend = document.getElementById('legend-beacons');
+    if (legend) {
+      const intro = `<p class="legend-beacons-intro">${t('map.legend.beaconsIntro')}</p>`;
+      const groups = BEACON_FAMILIES.map((fam, idx) => {
+        const rows = BEACONS.filter(b => b.family === fam.id).map(b => `
+          <div class="legend-beacon-row">
+            ${beaconChip(b)}
+            <div class="legend-beacon-text">
+              <strong>${b.name} — ${t(`map.beacon.${b.id}.hazard`)}</strong>
+              <p class="legend-beacon-q">${t(`map.beacon.${b.id}.question`)}</p>
+              <p class="legend-beacon-ex">${t(`map.beacon.${b.id}.examples`)}</p>
+            </div>
+          </div>`).join('');
+        return `
+          <details class="legend-fam"${idx === 0 ? ' open' : ''}>
+            <summary><span class="beacon-fam-dot" style="background:${fam.color}"></span>${t(fam.labelKey)}</summary>
+            <div class="legend-fam-body">${rows}</div>
+          </details>`;
+      }).join('');
+      legend.innerHTML = `<p class="legend-beacons-title">${t('map.legend.beaconsTitle')}</p>${intro}${groups}`;
+    }
+
+    // 3) Checkboxes de família no filtro
+    const famFilter = document.getElementById('beacon-family-filter');
+    if (famFilter) {
+      famFilter.innerHTML = BEACON_FAMILIES.map(fam => `
+        <label class="family-row">
+          <input type="checkbox" class="family-checkbox" data-family="${fam.id}" checked />
+          <span class="ds-checkbox ds-checkbox-blue" aria-hidden="true">
+            <img src="/mapa/icons/check-sm.svg" alt="" width="10" height="8" />
+          </span>
+          <span class="family-dot" style="background:${fam.color}"></span>
+          <span class="family-label">${t(fam.labelKey)}</span>
+        </label>`).join('');
+      famFilter.querySelectorAll('.family-checkbox').forEach(chk => {
+        chk.addEventListener('change', applyFilters);
+      });
+    }
+  }
+  initBeaconUI();
+
   if (filterDateFrom) filterDateFrom.addEventListener('change', applyFilters);
   if (filterDateTo) filterDateTo.addEventListener('change', applyFilters);
   if (filterClearDates) {
@@ -2315,10 +2506,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const imgPreviewMemoria = document.getElementById('img-preview-memoria');
   const btnRemovePhoto = document.getElementById('btn-remove-photo');
   let loadedMemoriaPhoto = null;
-
-  // Marcador Radio Elements
-  const optionTipoAlerta = document.getElementById('option-tipo-alerta');
-  const optionTipoInteresse = document.getElementById('option-tipo-interesse');
 
   function openModal() {
     if (creationModal) creationModal.classList.add('open');
@@ -2379,6 +2566,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (placeState.type === 'missao') {
       resetMissaoForm();
+    }
+    if (placeState.type === 'marcador') {
+      // Novo beacon: pré-seleciona o primeiro da grade (o reset() do form desmarca).
+      const firstBeacon = document.querySelector('input[name="beacon-id"]');
+      if (firstBeacon) firstBeacon.checked = true;
     }
     if (modalTitleEl) modalTitleEl.textContent = MODAL_TITLES[placeState.type] || t('map.modal.newMarker');
     if (modalTabsEl) modalTabsEl.classList.add('hidden');
@@ -2502,21 +2694,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const event = new Event('change');
         inputFotoMemoria.dispatchEvent(event);
       }
-    });
-  }
-
-  // Seleção de Tipo de Marcador (Alerta vs Ponto de Interesse)
-  if (optionTipoAlerta && optionTipoInteresse) {
-    optionTipoAlerta.addEventListener('click', () => {
-      optionTipoAlerta.classList.add('active');
-      optionTipoInteresse.classList.remove('active');
-      optionTipoAlerta.querySelector('input').checked = true;
-    });
-
-    optionTipoInteresse.addEventListener('click', () => {
-      optionTipoInteresse.classList.add('active');
-      optionTipoAlerta.classList.remove('active');
-      optionTipoInteresse.querySelector('input').checked = true;
     });
   }
 
@@ -2692,47 +2869,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
       } else if (currentActiveTab === 'marcador') {
-        const tipoMarcador = document.querySelector('input[name="tipo-marcador"]:checked')?.value || 'alerta';
-        const marcadorTitle = document.getElementById('input-titulo-marcador').value || 'Marcador Territorial';
-        const marcadorCat = document.getElementById('select-categoria-marcador').value;
-        const marcadorDesc = document.getElementById('input-descricao-marcador').value || 'Anotação comunitária no território.';
+        // Beacon: lê o beacon escolhido na grade; deriva família/cor/ícone da config.
+        const beaconId = document.querySelector('input[name="beacon-id"]:checked')?.value || BEACONS[0].id;
+        const beacon = beaconById(beaconId) || BEACONS[0];
+        const hazard = t(`map.beacon.${beacon.id}.hazard`);
+        const beaconTitle = document.getElementById('input-titulo-marcador').value || beacon.name;
+        const beaconDesc = document.getElementById('input-descricao-marcador').value
+          || t(`map.beacon.${beacon.id}.examples`);
 
-        const badgeClass = tipoMarcador === 'alerta' ? 'alerta' : 'marcador';
-        const tagTitle = tipoMarcador === 'alerta' ? 'Alerta Comunitário' : 'Ponto de Interesse';
         const editing = editingItemId && findMapItem('marcador', editingItemId);
         if (editing) {
           Object.assign(editing.data, {
-            titulo: marcadorTitle,
-            descricao: marcadorDesc,
-            categoria: categoriaKey(marcadorCat),
-            categoriaLabel: marcadorCat,
-            badgeClass,
-            tagTitle
+            titulo: beaconTitle,
+            descricao: beaconDesc,
+            beacon: beacon.id,
+            family: beacon.family,
+            categoria: beacon.family,
+            categoriaLabel: hazard,
+            badgeClass: `beacon beacon-${beacon.family}`,
+            tagTitle: beacon.name
           });
           refreshPinAppearance(editing);
           refreshPinPopup(editing);
-          showToast(t('map.toast.markerUpdated', undefined, { title: marcadorTitle }));
+          showToast(t('map.toast.markerUpdated', undefined, { title: beaconTitle }));
         } else {
           const newData = {
             id: newFeatureId('mar'),
             lat: center.lat,
             lng: center.lng,
-            titulo: marcadorTitle,
-            descricao: marcadorDesc,
+            titulo: beaconTitle,
+            descricao: beaconDesc,
             status: t('map.statusActive'),
-            categoria: categoriaKey(marcadorCat),
-            categoriaLabel: marcadorCat,
-            badgeClass,
-            tagTitle,
+            beacon: beacon.id,
+            family: beacon.family,
+            categoria: beacon.family,
+            categoriaLabel: hazard,
+            badgeClass: `beacon beacon-${beacon.family}`,
+            tagTitle: beacon.name,
             vinculo: vinculoForma,
             memorias: [],
             tipo: 'marcador'
           };
 
-          const newIcon = createCustomIcon(
-            typeBadge(badgeClass, newData.cor),
-            marcadorTitle
-          );
+          const newIcon = createCustomIcon(beaconBadge(beacon.id, newData.cor), beaconTitle);
 
           const marker = L.marker([center.lat, center.lng], { icon: newIcon })
             .bindPopup(buildParentCardHtml('marcador', newData), POPUP_OPTS)
@@ -2740,7 +2919,7 @@ document.addEventListener('DOMContentLoaded', () => {
           registerMapItem('marcador', newData, marker);
           applyFilters();
 
-          showToast(t('map.toast.markerAdded', undefined, { title: marcadorTitle }));
+          showToast(t('map.toast.markerAdded', undefined, { title: beaconTitle }));
         }
 
       } else if (currentActiveTab === 'totem') {
@@ -3207,20 +3386,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fillMarcadorForm(data) {
-    const isAlerta = data.badgeClass === 'alerta' || (!data.badgeClass && data.tagTitle !== 'Ponto de Interesse');
-    if (optionTipoAlerta && optionTipoInteresse) {
-      optionTipoAlerta.classList.toggle('active', isAlerta);
-      optionTipoInteresse.classList.toggle('active', !isAlerta);
-      const alertaInput = optionTipoAlerta.querySelector('input');
-      const interesseInput = optionTipoInteresse.querySelector('input');
-      if (alertaInput) alertaInput.checked = isAlerta;
-      if (interesseInput) interesseInput.checked = !isAlerta;
-    }
     const title = document.getElementById('input-titulo-marcador');
     const desc = document.getElementById('input-descricao-marcador');
     if (title) title.value = data.titulo || '';
     if (desc) desc.value = data.descricao || '';
-    setSelectByCategoria(document.getElementById('select-categoria-marcador'), data);
+    // Seleciona o beacon na grade (CSS `:has(input:checked)` destaca a célula).
+    const beaconId = data.beacon || BEACONS[0].id;
+    const radio = document.querySelector(`input[name="beacon-id"][value="${beaconId}"]`);
+    if (radio) radio.checked = true;
   }
 
   function fillMutiraoForm(data) {
@@ -3277,11 +3450,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const extra = entry.kind === 'totem' ? 'marker-totem' : '';
-    entry.marker.setIcon(createCustomIcon(
-      typeBadge(pinBadgeType(entry), entry.data.cor),
-      pinLabel(entry),
-      extra
-    ));
+    const badge = (entry.kind === 'marcador' && entry.data.beacon)
+      ? beaconBadge(entry.data.beacon, entry.data.cor)
+      : typeBadge(pinBadgeType(entry), entry.data.cor);
+    entry.marker.setIcon(createCustomIcon(badge, pinLabel(entry), extra));
   }
 
   function refreshPinPopup(entry, activeTab = 'sobre') {
